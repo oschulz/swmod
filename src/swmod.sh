@@ -1,13 +1,14 @@
 # == main =============================================================
 
 # Check if we're running in a bash
+
 if ! (ps $$ | grep -q bash) ; then
 	echo "Error: swmod only works in a bash environment for now - sorry." 1>&2
 	return 1
 fi
 
-SWMOD_COMMAND="$1"
-shift 1
+
+# Check HOSTSPEC
 
 if [ "${HOSTSPEC}" == "" ] ; then
 	export HOSTSPEC="`hostspec`"
@@ -16,6 +17,12 @@ if [ "${HOSTSPEC}" == "" ] ; then
 		return 1
 	fi
 fi
+
+
+# Get subcommand
+
+SWMOD_COMMAND="$1"
+shift 1
 
 if [ "${SWMOD_COMMAND}" == "" ] ; then
 echo >&2 "Usage: ${0} COMMAND OPTIONS"
