@@ -152,11 +152,6 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 	export SWMOD_LDFLAGS="-L${SWMOD_PREFIX}/lib $SWMOD_LDFLAGS"
 
 
-	## Clear temporary variables ##
-
-	SWMOD_PREFIX=
-
-
 	## Application specific settings ##
 
 	if [ -x "${SWMOD_PREFIX}/bin/root-config" ] ; then
@@ -167,9 +162,11 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 		echo "Detected CERN ROOT System, setting ROOTSYS." 1>&2
 		export ROOTSYS="${SWMOD_PREFIX}"
 	fi
+
 	
 	## Clear variables and return ##
 	
+	SWMOD_PREFIX=
 	SWMOD_MODULE=
 	SWMOD_MODVER=
 	
