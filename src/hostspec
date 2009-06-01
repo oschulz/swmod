@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Generates a generic host-type specification string
+#
+# Examples:
+# linux-debian-4.0-x86_64
+# linux-ubuntu-8.04-i686
+# linux-slc-4.6-x86_64
+# linux-suse-10.0-i686
+# sunos-5.8-sun4u
+
+
+# Allow for override:
+if [ "${HOSTSPEC}" != "" ] ; then
+	echo "${HOSTSPEC}"
+	exit 0
+fi
+
+
+UNAME_KERNEL=`uname -s`
+
+if [ "${UNAME_KERNEL}" == 'Linux' ] ; then
+	OS="linux"
+
+	DIST=`lsb_release -s -i`
+	if [ "${DIST}" == "Debian" ] ; then
+		DIST='debian'
+	elif [ "${DIST}" == "Ubuntu" ] ; then
+		DIST='ubuntu'
+	elif [ "${DIST}" == "SUSE LINUX" ] ; then
+		DIST='suse'
+	elif [ "${DIST}" == "Gentoo" ] ; then
+		DIST='gentoo'
+	elif [ "${DIST}" == "FedoraCore" ] ; then
+		DIST='fedora'
+	elif [ "${DIST}" == "RedHatEnterpriseAS" ] ; then
+		DIST='rhel'
+	elif [ "${DIST}" == "RedHatEnterpriseES" ] ; then
+		DIST='rhel'
+	elif [ "${DIST}" == "RedHatEnterpriseWS" ] ; then
+		DIST='rhel'
+	elif [ "${DIST}" == "CentOS" ] ; then
+		DIST='centos'
+	elif [ "${DIST}" == "Scientific Linux" ] ; then
+		DIST='slc'
+	elif [ "${DIST}" == "ScientificSL" ] ; then
+		DIST='slc'
+	elif [ "${DIST}" == "Scientific Linux CERN" ] ; then
+		DIST='slc'
+	elif [ "${DIST}" == "ScientificCERNSLC" ] ; then
+		DIST='slc'
+	fi
+	
+	# Remove non-alnum chars from DIST and convert to lowercase:
+	DIST=`echo "${DIST}" | sed 's/[^[:alnum:]]//g' | tr "[:upper:]" "[:lower:]"`
+	
+	REL=`lsb_release -s -r`
+	CPU=`uname -m`
+
+	echo "${OS}-${DIST}-${REL}-${CPU}"
+elif [ "${UNAME_KERNEL}" == 'SunOS' ] ; then
+	OS="sunos"
+	REL=`uname -r`
+	CPU=`uname -m`
+	echo "${OS}-${REL}-${CPU}"
+elif [ "${UNAME_KERNEL}" == 'Darwin' ] ; then
+	OS="osx"
+	REL=`sw_vers -productVersion`
+	CPU=`uname -m`
+	BIT_64=`sysctl -n hw.cpu64bit_capable`
+	if [ "${CPU}" == "i386" -a "${BIT_64}" == "1" ] ; then
+		CPU="x86_64"
+	fi
+	# What about ppc and ppc64?
+	echo "${OS}-${REL}-${CPU}"
+else
+	echo unknown
+	exit 1
+fi
