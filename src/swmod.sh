@@ -32,11 +32,13 @@ Software module handling
 COMMANDS:
   init                        Set aliases, variables and create directories.
   load                        Load a module.
+  setinst                     Set target module for software package installation.
   configure                   Run a configure script with suitable options
 							  to install a software package into a module.
 							  You may specify the full path of the script instead,
 							  e.g. ./configure or some-path/configure.
 EOF
+return 1
 fi
 
 
@@ -65,17 +67,12 @@ if [ "${SWMOD_COMMAND}" == "init" ] ; then
 	
 	## Determine create default install directories ##
 
-	if [ "${SWMOD_INST_MODULE}" != "" ] ; then
-		if [ "${SWMOD_INST_VERSION}" != "" ] ; then
-			mkdir -p "${SWMOD_INST_MODULE}/${HOSTSPEC}/${SWMOD_INST_VERSION}/bin"
-			mkdir -p "${SWMOD_INST_MODULE}/${HOSTSPEC}/${SWMOD_INST_VERSION}/lib"
-		else
-			mkdir -p "${SWMOD_INST_MODULE}/${HOSTSPEC}/bin"
-			mkdir -p "${SWMOD_INST_MODULE}/${HOSTSPEC}/lib"
-		fi
+	source swmod.sh setinst "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
 
-		source swmod.sh load "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
-	fi
+	mkdir -p "${SWMOD_INST_PREFIX}/bin"
+	mkdir -p "${SWMOD_INST_PREFIX}/lib"
+
+	source swmod.sh load "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
 
 	
 	## Clear variables and return ##
@@ -96,22 +93,12 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 	SWMOD_MODVER=$2
 
 	if [ "${SWMOD_MODULE}" == "" ] ; then
-		echo "Syntax: $0 SWMOD_MODULE [MODULE_VERSION]"
+		echo "Syntax: swmod load SWMOD_MODULE [MODULE_VERSION]"
 		echo
 		echo "You may specify either the full module path or just the" \
-			 "module name, in which case $0 will look for the module in" \
+			 "module name, in which case swmod will look for the module in" \
 			 "the directories specified by the SWMOD_PATH environment variable"
 		return 1
-	fi
-
-	## Detect system type ##
-
-	if [ "${HOSTSPEC}" == "" ] ; then
-		export HOSTSPEC="`hostspec`"
-		if [ "${HOSTSPEC}" == "" ] ; then
-			echo "Error: Could not determine host specification." 1>&2
-			return 1
-		fi
 	fi
 
 
@@ -175,6 +162,44 @@ fi
 
 
 
+# == setinst subcommand ==================================================
+
+if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
+	## Parse arguments ##
+
+	SWMOD_MODULE=$1
+	SWMOD_MODVER=$2
+
+	if [ "${SWMOD_MODULE}" == "" ] ; then
+		echo "Syntax: swmod setinst SWMOD_MODULE [MODULE_VERSION]"
+		echo
+		echo "You may specify either the full module path or just the" \
+			 "module name, in which case swmod will look for the module in" \
+			 "the directories specified by the SWMOD_PATH environment variable"
+		return 1
+	fi
+
+	export SWMOD_INST_MODULE="${SWMOD_MODULE}"
+	export SWMOD_INST_VERSION="${SWMOD_MODVER}"
+
+	if [ "${SWMOD_INST_MODULE}" != "" ] ; then
+		export SWMOD_INST_PREFIX="${SWMOD_INST_MODULE}/${HOSTSPEC}"
+		if [ "${SWMOD_INST_VERSION}" != "" ] ; then
+			export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
+		fi
+	fi
+
+	
+	## Clear variables and return ##
+	
+	SWMOD_MODULE=
+	SWMOD_MODVER=
+	
+	return 0
+fi
+
+
+
 # == configure subcommand =============================================
 
 if [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then
@@ -190,33 +215,20 @@ if [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then
 	fi
 
 
-	HOSTSPEC=`hostspec`
-	if [ "${HOSTSPEC}" == "" ] ; then
-		echo "Error: Could not determine host specification." 1>&2
-		exit 1
-	fi
-
-
-	if [ "${SWMOD_INST_MODULE}" == "" ] ; then
-		echo "Error: SWMOD_INST_MODULE not set, can't determine installation prefix." 1>&2
+	if [ "${SWMOD_INST_PREFIX}" == "" ] ; then
+		echo "Error: SWMOD_INST_PREFIX not set, can't determine installation prefix." 1>&2
 		return 1
-	fi
-
-	SWMOD_PREFIXDIR="${SWMOD_INST_MODULE}/${HOSTSPEC}"
-	if [ "${SWMOD_INST_VERSION}" != "" ] ; then
-		SWMOD_PREFIXDIR="${SWMOD_PREFIXDIR}/${SWMOD_INST_VERSION}"
 	fi
 
 
 	CPPFLAGS="$CPPFLAGS ${SWMOD_CPPFLAGS}" \
 		LDFLAGS="$LDFLAGS ${SWMOD_LDFLAGS}" \
-		"${CONFIGURE}" --prefix="${SWMOD_PREFIXDIR}" "$@"
+		"${CONFIGURE}" --prefix="${SWMOD_INST_PREFIX}" "$@"
 
 
 	## Clear variables and return ##
 
 	CONFIGURE=
-	SWMOD_PREFIXDIR=
 	
 	return 0
 fi
