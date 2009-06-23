@@ -41,6 +41,100 @@ EOF
 return 1
 fi
 
+# == functions ========================================================
+
+swmod_findversion_indir() {
+	# Arguments: module_dir, module_version
+	# echo "DEBUG: Searching for version \"$2\" in directory \"$1\"" 1>&2
+	if [ ! -d "${1}" ] ; then
+		echo "Internal error: Directory does not exist." 1>&2; return
+	fi
+
+	if [ "${2}" == "" ] ; then # no version specified
+		# echo "DEBUG: No version specified." 1>&2
+		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' ] ; then
+			# echo "DEBUG: module seems to be unversioned." 1>&2
+			SWMOD_PREFIX="$1/${HOSTSPEC}"; return
+		else
+			local v
+			for v in default production prod; do
+				if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+					echo "Assuming module version \"$v\"" 1>&2
+					SWMOD_MODVER="${v}"
+					SWMOD_PREFIX="$1/${HOSTSPEC}/$v"; return
+				fi
+			done
+			if [ "${SWMOD_PREFIX}" == "" ] ; then
+				local spcand
+				while read spcand; do
+					local v=`basename "${spcand}"`
+					if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+						echo "Assuming module version \"$v\"" 1>&2
+						SWMOD_MODVER="${v}"
+						SWMOD_PREFIX="$1/${HOSTSPEC}/$v"; return
+					fi
+				done < <( ls "$1/${HOSTSPEC}" 2> /dev/null | sort -r -n )
+			fi
+			if [ "${SWMOD_PREFIX}" == "" ] ; then
+				# echo "DEBUG: No versions found for module." 1>&2
+				# echo "DEBUG: Warning: Assuming module to be unversioned." 1>&2
+				SWMOD_PREFIX="$1/${HOSTSPEC}"; return
+			fi
+		fi
+	else
+		# echo "DEBUG: looking for module version \"${2}\"" 1>&2
+		if [ -d "$1/${HOSTSPEC}/$2" ] ; then
+			# echo "DEBUG: Exact match." 1>&2
+			SWMOD_PREFIX="$1/${HOSTSPEC}/$2"
+			return
+		else
+			while read spcand; do
+				local v=`basename "${spcand}"`
+				case $v in
+				"$SWMOD_MODVER"*)
+					# echo "DEBUG: Substring match." 1>&2
+					SWMOD_MODVER="${v}"
+					SWMOD_PREFIX="$1/${HOSTSPEC}/${v}"
+				esac
+			done < <( ls "$1/${HOSTSPEC}" 2> /dev/null |sort -r -n )
+		fi
+	fi
+}
+
+
+swmod_getprefix() {
+	# Arguments: module[@version]
+
+	SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
+	SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
+	SWMOD_PREFIX=
+
+	# echo "DEBUG: Searching for module \"${SWMOD_MODULE}\", version \"${SWMOD_MODVER}\"." 1>&2
+
+
+	if [ -d "${SWMOD_MODULE}" ] ; then
+		# echo "DEBUG: Full path to module specified." 1>&2
+		swmod_findversion_indir "$SWMOD_MODULE" "$SWMOD_MODVER"
+		if [ "${SWMOD_PREFIX}" != "" ] ; then return; fi
+	fi
+
+	if [ "${SWMOD_PREFIX}" == "" ] ; then
+		# echo "DEBUG: Searching for module." 1>&2
+
+		while read -d ':' dir; do
+			if [ -d "${dir}" ]; then
+				# echo "DEBUG: Checking module dir \"${dir}\"" 1>&2
+				if [ -d "${dir}/${SWMOD_MODULE}" ]; then
+					swmod_findversion_indir "${dir}/${SWMOD_MODULE}" "$SWMOD_MODVER"
+					if [ "${SWMOD_PREFIX}" != "" ] ; then
+						return;
+					fi
+				fi
+			fi
+		done < <( echo "${SWMOD_MODPATH}:" )
+	fi
+}
+
 
 # == init subcommand ==================================================
 
@@ -89,29 +183,27 @@ fi
 if [ "${SWMOD_COMMAND}" == "load" ] ; then
 	## Parse arguments ##
 
-	SWMOD_MODULE=$1
-	SWMOD_MODVER=$2
+	SWMOD_MODSPEC=$1
 
-	if [ "${SWMOD_MODULE}" == "" ] ; then
-		echo "Syntax: swmod load SWMOD_MODULE [MODULE_VERSION]"
+	if [ "${SWMOD_MODSPEC}" == "" ] ; then
+		echo "Syntax: swmod load MODULE[@VERSION]"
 		echo
 		echo "You may specify either the full module path or just the" \
 			 "module name, in which case swmod will look for the module in" \
-			 "the directories specified by the SWMOD_PATH environment variable"
+			 "the directories specified by the SWMOD_MODPATH environment variable"
 		return 1
 	fi
 
 
 	## Detect prefix ##
 
-	SWMOD_PREFIX="${SWMOD_MODULE}/${HOSTSPEC}"
+	swmod_getprefix "${SWMOD_MODSPEC}"
 
-	if [ "${SWMOD_MODVER}" != "" ] ; then
-		SWMOD_PREFIX="${SWMOD_PREFIX}/${SWMOD_MODVER}"
-	fi
-	if [ ! '(' -d "${SWMOD_PREFIX}/bin" ')' -a ! '(' -d "${SWMOD_PREFIX}/lib" ')' ]; then
-		echo "Error: No suitable version of \"${SWMOD_MODULE}\", version \"${SWMOD_MODVER}\" for ${HOSTSPEC} found." 1>&2
+	if [ "${SWMOD_PREFIX}" == "" ] ; then
+		echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
 		return 1
+	else
+		echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
 	fi
 
 
@@ -175,7 +267,7 @@ if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
 		echo
 		echo "You may specify either the full module path or just the" \
 			 "module name, in which case swmod will look for the module in" \
-			 "the directories specified by the SWMOD_PATH environment variable"
+			 "the directories specified by the SWMOD_MODPATH environment variable"
 		return 1
 	fi
 
