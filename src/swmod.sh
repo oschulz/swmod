@@ -166,7 +166,7 @@ if [ "${SWMOD_COMMAND}" == "init" ] ; then
 	mkdir -p "${SWMOD_INST_PREFIX}/bin"
 	mkdir -p "${SWMOD_INST_PREFIX}/lib"
 
-	source swmod.sh load "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
+	source swmod.sh load "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}" 2> /dev/null
 
 	
 	## Clear variables and return ##
