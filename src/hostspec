@@ -83,11 +83,6 @@ elif [ "${UNAME_KERNEL}" == 'Darwin' ] ; then
 	OS="osx"
 	REL=`sw_vers -productVersion`
 	CPU=`uname -m`
-	BIT_64=`sysctl -n hw.cpu64bit_capable`
-	if [ "${CPU}" == "i386" -a "${BIT_64}" == "1" ] ; then
-		CPU="x86_64"
-	fi
-	# What about ppc and ppc64?
 	echo "${OS}-${REL}-${CPU}"
 else
 	echo unknown
