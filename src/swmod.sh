@@ -313,7 +313,6 @@ fi
 
 if [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then
 	CONFIGURE="${SWMOD_COMMAND}"
-	shift 1
 
 	if [ "${CONFIGURE}" == "configure" ] ; then
 		CONFIGURE="./configure"
