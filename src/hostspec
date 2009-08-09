@@ -26,12 +26,14 @@
 # sunos-5.8-sun4u
 
 
-# Allow for override:
+# Allow for overrides:
 if [ "${HOSTSPEC}" != "" ] ; then
 	echo "${HOSTSPEC}"
 	exit 0
+elif [ -f /etc/hostspec ] ; then
+	cat /etc/hostspec | grep -v '^#' | grep -o '[^[:space:]]\+' | head -n 1
+	exit 0;
 fi
-
 
 UNAME_KERNEL=`uname -s`
 
