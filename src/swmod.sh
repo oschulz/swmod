@@ -35,6 +35,15 @@ if [ "${HOSTSPEC}" == "" ] ; then
 	fi
 fi
 
+# Check python version
+
+SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
+
+if [ "x${SWMOD_PYTHON_V}" != "x" ] ; then
+	export SWMOD_PYTHON_V
+else
+	SWMOD_PYTHON_V=
+fi
 
 # Get subcommand
 
@@ -241,6 +250,10 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 		export PKG_CONFIG_PATH="${SWMOD_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 	fi
 
+	if [ -x "${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages" ] ; then
+		PYTHONPATH="${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+	fi
+
 
 	## Set SWMOD compiler and linker search paths ##
 
@@ -257,6 +270,7 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 		# installation (instead of just using root-config).
 		echo "Detected CERN ROOT System, setting ROOTSYS." 1>&2
 		export ROOTSYS="${SWMOD_PREFIX}"
+		export PYTHONPATH="${ROOTSYS}/lib:${PYTHONPATH}"
 	fi
 
 	
