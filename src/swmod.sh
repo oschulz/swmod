@@ -189,10 +189,12 @@ if [ "${SWMOD_COMMAND}" == "init" ] ; then
 
 	source swmod.sh setinst "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
 
-	mkdir -p "${SWMOD_INST_PREFIX}/bin"
-	mkdir -p "${SWMOD_INST_PREFIX}/lib"
-
-	source swmod.sh load "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}" 2> /dev/null
+	# Do not fail if SWMOD_INST_PREFIX does not exist and can't be created.
+	if (mkdir -p "${SWMOD_INST_PREFIX}/bin"); then true; fi
+	if (mkdir -p "${SWMOD_INST_PREFIX}/lib"); then true; fi
+	
+	# Load default inst-module
+	if source swmod.sh load "${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
 
 	
 	## Clear variables and return ##
