@@ -1,0 +1,16 @@
+swmod Installation Instructions
+-------------------------------
+
+Note: swmod only works with bash!
+
+Copy src/hostspec and src/swmod.sh in into a directory included
+in your PATH (e.g. ~/bin, ...).
+
+Add
+
+    source swmod.sh init
+	
+to your ~/.bashrc resp. ~/.profile .
+If you want to pre-load certain modules, also add something like
+
+    source swmod.sh load root-system@5.30 &> /dev/null
