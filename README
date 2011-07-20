@@ -1,0 +1,51 @@
+swmod Instructions
+------------------
+
+swmod is a simple system to manage installations of software compiled
+for different systems, both in a user home directory and in central
+locations.
+
+The software is managed in modules, which are placed in repositories.
+The default repository is ~/.local/sw. The module "default" is
+loaded by swmod during initialization. It has no version number and
+is also the default install target.
+
+
+Installing a software package
+-----------------------------
+
+swmod is currently geared towards software using an autoconf like
+"configure/make" build system.
+
+Configuration and installation:
+
+    # swmod ./configure [OPTIONS]
+	# make install
+	
+That's it. Now the software will be installed in
+
+    ~/.local/sw/default/HOSTSPEC/
+
+You can determine the HOSTSPEC for your system using the
+
+    # hostspec
+
+command. It will look like this: "linux-ubuntu-10.10-x86_64".
+
+swmod should already have extended PATH, LD_LIBRARY_PATH and so on correctly.
+
+
+Other module beside the default module
+--------------------------------------
+
+Use
+
+	swmod setinst PATH VERSION
+	
+to determine the install location, module name and version. Use
+
+	# swmod load MODULE[@VERSION]
+
+to load a module, optionally a specific version of it. You may supply only a
+part of the version number, for example to get the newest version "5.x" just
+use "MODULE@5".
