@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2011 Oliver Schulz <oliver.schulz@tu-dortmund.de>
+# Copyright (C) 2009-2012 Oliver Schulz <oliver.schulz@tu-dortmund.de>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -173,28 +173,23 @@ if [ "${SWMOD_COMMAND}" == "init" ] ; then
 	## Determine default install location ##
 
 	if [ "${SWMOD_INST_MODULE}" == "" ] ; then
-		if [ -d "${HOME}/.local/hspec" ] ; then
-			# Legacy ~/.local/hspec support.
-			export SWMOD_INST_MODULE="${HOME}/.local/hspec"
-			export SWMOD_INST_VERSION=
-		else
-			# New standard module ~/.local/swmod/default
-			export SWMOD_INST_MODULE="${HOME}/.local/sw/default"
-			export SWMOD_INST_VERSION=
-		fi
+		# New standard module ~/.local/swmod/default
+		export SWMOD_INST_BASE="${HOME}/.local/sw"
+		export SWMOD_INST_MODULE="default"
+		export SWMOD_INST_VERSION=
 	fi
 
 	
 	## Determine create default install directories ##
 
-	source swmod.sh setinst "${SWMOD_INST_MODULE}" "${SWMOD_INST_VERSION}"
+	source swmod.sh setinst "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}"
 
 	# Do not fail if SWMOD_INST_PREFIX does not exist and can't be created.
 	if (mkdir -p "${SWMOD_INST_PREFIX}/bin"); then true; fi
 	if (mkdir -p "${SWMOD_INST_PREFIX}/lib"); then true; fi
 	
 	# Load default inst-module
-	if source swmod.sh load "${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
+	if source swmod.sh load "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
 
 	
 	## Clear variables and return ##
@@ -292,23 +287,33 @@ fi
 if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
 	## Parse arguments ##
 
-	SWMOD_MODULE=$1
-	SWMOD_MODVER=$2
+	SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
+	SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
 
 	if [ "${SWMOD_MODULE}" == "" ] ; then
-		echo "Syntax: swmod setinst SWMOD_MODULE [MODULE_VERSION]"
+		echo "Syntax: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
 		echo
 		echo "You may specify either the full module path or just the" \
 			 "module name, in which case swmod will look for the module in" \
 			 "the directories specified by the SWMOD_MODPATH environment variable"
 		return 1
 	fi
+	
+	
+	if [ "${SWMOD_MODULE}" != `basename "${SWMOD_MODULE}"` ] ; then
+	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
+		export SWMOD_INST_BASE=`dirname "${SWMOD_MODULE}"`
+		SWMOD_MODULE=`basename "${SWMOD_MODULE}"`
+	fi
+
+	# For backwards compatibility (specification of version as second parameter)
+	if [ "${SWMOD_MODVER}" == "" ] ; then SWMOD_MODVER="$2"; fi
 
 	export SWMOD_INST_MODULE="${SWMOD_MODULE}"
 	export SWMOD_INST_VERSION="${SWMOD_MODVER}"
 
 	if [ "${SWMOD_INST_MODULE}" != "" ] ; then
-		export SWMOD_INST_PREFIX="${SWMOD_INST_MODULE}/${HOSTSPEC}"
+		export SWMOD_INST_PREFIX="${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}/${HOSTSPEC}"
 		if [ "${SWMOD_INST_VERSION}" != "" ] ; then
 			export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
 		fi
