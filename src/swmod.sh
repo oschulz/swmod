@@ -123,34 +123,14 @@ swmod_getprefix() {
 # == init subcommand ==================================================
 
 swmod_init() {
-	## Set aliases ##
+	## Set swmod alias ##
 
 	alias swmod='source swmod.sh'
 
-	
-	## Determine default install location ##
+	## Set SW_VERSION_ROOT and SWMOD_INST_BASE, if not already set ##
 
-	if [ "${SWMOD_INST_MODULE}" == "" ] ; then
-		# New standard module ~/.local/swmod/default
-		export SWMOD_INST_BASE="${HOME}/.local/sw"
-		export SWMOD_INST_MODULE="default"
-		export SWMOD_INST_VERSION=
-	fi
-
-	
-	## Determine create default install directories ##
-
-	swmod_setinst "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}"
-
-	# Do not fail if SWMOD_INST_PREFIX does not exist and can't be created.
-	if (mkdir -p "${SWMOD_INST_PREFIX}/bin"); then true; fi
-	if (mkdir -p "${SWMOD_INST_PREFIX}/lib"); then true; fi
-	
-	# Load default inst-module
-	if swmod_load "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
-
-	
-	## Clear variables and return ##
+	export SWMOD_MODPATH="${SWMOD_MODPATH:-${HOME}/.local/sw}"	
+	export SWMOD_INST_BASE="${SWMOD_INST_BASE:-${HOME}/.local/sw}"
 }
 
 
@@ -278,6 +258,11 @@ swmod_setinst() {
 # == adddeps subcommand =============================================
 
 swmod_adddeps() {
+	if [ "x${SWMOD_INST_PREFIX}" == "x" ] ; then
+		echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
+		return 1
+	fi
+
 	if [ "${1}" == "" ] ; then
 		echo "Syntax: swmod adddeps MODULE[@VERSION] ..."
 		echo
@@ -286,11 +271,6 @@ swmod_adddeps() {
 		return 1
 	fi
 	
-	if [ "${SWMOD_INST_MODULE}" == "default" ] ; then
-		echo "ERROR: Adding dependencies to module \"${SWMOD_INST_MODULE}\" is probably not a good idea." 1>&2
-		return 1
-	fi
-
 	mkdir -p "${SWMOD_INST_PREFIX}"
 	
 	for dep in "$@"; do
@@ -303,6 +283,11 @@ swmod_adddeps() {
 # == configure subcommand =============================================
 
 swmod_configure() {
+	if [ "x${SWMOD_INST_PREFIX}" == "x" ] ; then
+		echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
+		return 1
+	fi
+
 	local CONFIGURE="$1"
 	shift 1
 
