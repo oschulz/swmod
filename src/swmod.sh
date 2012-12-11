@@ -26,7 +26,7 @@ swmod_findversion_indir() {
 
 	if [ "${2}" == "" ] ; then # no version specified
 		# echo "DEBUG: No version specified." 1>&2
-		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' ] ; then
+		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' -o '(' -f "$1/${HOSTSPEC}/swmod.deps" ')' ] ; then
 			# echo "DEBUG: module seems to be unversioned." 1>&2
 			local SWMOD_PREFIX="$1/${HOSTSPEC}"
 			echo "${SWMOD_PREFIX}"
@@ -183,6 +183,12 @@ swmod_load() {
 		echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
 	fi
 
+	if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
+		for dep in `cat "${SWMOD_PREFIX}/swmod.deps"`; do
+			echo "Resolving dependency ${dep}" 1>&2
+			swmod_load "${dep}"
+		done
+	fi
 
 	## Set standards paths and variables ##
 
@@ -269,6 +275,31 @@ swmod_setinst() {
 }
 
 
+# == adddeps subcommand =============================================
+
+swmod_adddeps() {
+	if [ "${1}" == "" ] ; then
+		echo "Syntax: swmod adddeps MODULE[@VERSION] ..."
+		echo
+		echo "This adds the specified modules as dependencies to the" \
+		     "current swmod install target (set by \"swmod setinst\")."
+		return 1
+	fi
+	
+	if [ "${SWMOD_INST_MODULE}" == "default" ] ; then
+		echo "ERROR: Adding dependencies to module \"${SWMOD_INST_MODULE}\" is probably not a good idea." 1>&2
+		return 1
+	fi
+
+	mkdir -p "${SWMOD_INST_PREFIX}"
+	
+	for dep in "$@"; do
+		echo "Adding ${dep} to ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
+		echo "${dep}" >> "${SWMOD_INST_PREFIX}/swmod.deps"
+	done
+}
+
+
 # == configure subcommand =============================================
 
 swmod_configure() {
@@ -331,6 +362,7 @@ COMMANDS:
   init                        Set aliases, variables and create directories.
   load                        Load a module.
   setinst                     Set target module for software package installation.
+  adddeps                     Add dependencies to the current install target.
   configure                   Run a configure script with suitable options
 							  to install a software package into a module.
 							  You may specify the full path of the script instead,
@@ -342,6 +374,7 @@ fi
 if [ "${SWMOD_COMMAND}" == "init" ] ; then swmod_init "$@"
 elif [ "${SWMOD_COMMAND}" == "load" ] ; then swmod_load "$@"
 elif [ "${SWMOD_COMMAND}" == "setinst" ] ; then swmod_setinst "$@"
+elif [ "${SWMOD_COMMAND}" == "adddeps" ] ; then swmod_adddeps "$@"
 elif [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then swmod_configure "${SWMOD_COMMAND}" "$@"
 else
 	echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
