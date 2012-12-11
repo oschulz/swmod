@@ -15,58 +15,6 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 
-# == main =============================================================
-
-# Check if we're running in a bash
-
-if ! (ps $$ | grep -q bash) ; then
-	echo "Error: swmod only works in a bash environment for now - sorry." 1>&2
-	return 1
-fi
-
-
-# Check HOSTSPEC
-
-if [ "${HOSTSPEC}" == "" ] ; then
-	export HOSTSPEC="`hostspec`"
-	if [ "${HOSTSPEC}" == "" ] ; then
-		echo "Error: Could not determine host specification." 1>&2
-		return 1
-	fi
-fi
-
-# Check python version
-
-SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
-
-if [ "x${SWMOD_PYTHON_V}" != "x" ] ; then
-	export SWMOD_PYTHON_V
-else
-	SWMOD_PYTHON_V=
-fi
-
-# Get subcommand
-
-SWMOD_COMMAND="$1"
-shift 1
-
-if [ "${SWMOD_COMMAND}" == "" ] ; then
-echo >&2 "Usage: ${0} COMMAND OPTIONS"
-cat >&2 <<EOF
-Software module handling
-
-COMMANDS:
-  init                        Set aliases, variables and create directories.
-  load                        Load a module.
-  setinst                     Set target module for software package installation.
-  configure                   Run a configure script with suitable options
-							  to install a software package into a module.
-							  You may specify the full path of the script instead,
-							  e.g. ./configure or some-path/configure.
-EOF
-return 1
-fi
-
 # == functions ========================================================
 
 swmod_findversion_indir() {
@@ -80,14 +28,17 @@ swmod_findversion_indir() {
 		# echo "DEBUG: No version specified." 1>&2
 		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' ] ; then
 			# echo "DEBUG: module seems to be unversioned." 1>&2
-			SWMOD_PREFIX="$1/${HOSTSPEC}"; return
+			local SWMOD_PREFIX="$1/${HOSTSPEC}"
+			echo "${SWMOD_PREFIX}"
+			return
 		else
 			local v
 			for v in default production prod; do
 				if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
 					echo "Assuming module version \"$v\"" 1>&2
-					SWMOD_MODVER="${v}"
-					SWMOD_PREFIX="$1/${HOSTSPEC}/$v"; return
+					local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
+					echo "${SWMOD_PREFIX}"
+					return
 				fi
 			done
 			if [ "${SWMOD_PREFIX}" == "" ] ; then
@@ -96,31 +47,37 @@ swmod_findversion_indir() {
 					local v=`basename "${spcand}"`
 					if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
 						echo "Assuming module version \"$v\"" 1>&2
-						SWMOD_MODVER="${v}"
-						SWMOD_PREFIX="$1/${HOSTSPEC}/$v"; return
+						local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
+						echo "${SWMOD_PREFIX}"
+						return
 					fi
 				done < <( ls "$1/${HOSTSPEC}" 2> /dev/null | sort -r -n )
 			fi
 			if [ "${SWMOD_PREFIX}" == "" ] ; then
 				# echo "DEBUG: No versions found for module." 1>&2
 				# echo "DEBUG: Warning: Assuming module to be unversioned." 1>&2
-				SWMOD_PREFIX="$1/${HOSTSPEC}"; return
+				local SWMOD_PREFIX="$1/${HOSTSPEC}"
+				echo "${SWMOD_PREFIX}"
+				return
 			fi
 		fi
 	else
-		# echo "DEBUG: looking for module version \"${2}\"" 1>&2
+		local SWMOD_SPECVER="$2"
+		# echo "DEBUG: looking for module version \"${SWMOD_SPECVER}\"" 1>&2
 		if [ -d "$1/${HOSTSPEC}/$2" ] ; then
 			# echo "DEBUG: Exact match." 1>&2
-			SWMOD_PREFIX="$1/${HOSTSPEC}/$2"
+			local SWMOD_PREFIX="$1/${HOSTSPEC}/${SWMOD_SPECVER}"
+			echo "${SWMOD_PREFIX}"
 			return
 		else
 			while read spcand; do
 				local v=`basename "${spcand}"`
 				case $v in
-				"$SWMOD_MODVER"*)
+				"$SWMOD_SPECVER"*)
 					# echo "DEBUG: Substring match." 1>&2
-					SWMOD_MODVER="${v}"
-					SWMOD_PREFIX="$1/${HOSTSPEC}/${v}"
+					local SWMOD_PREFIX="$1/${HOSTSPEC}/${v}"
+					echo "${SWMOD_PREFIX}"
+					return
 				esac
 			done < <( ls "$1/${HOSTSPEC}" 2> /dev/null |sort -r -n )
 		fi
@@ -131,16 +88,16 @@ swmod_findversion_indir() {
 swmod_getprefix() {
 	# Arguments: module[@version]
 
-	SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
-	SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
-	SWMOD_PREFIX=
+	local SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
+	local SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
+	local SWMOD_PREFIX=
 
 	# echo "DEBUG: Searching for module \"${SWMOD_MODULE}\", version \"${SWMOD_MODVER}\"." 1>&2
 
 
 	if [ -d "${SWMOD_MODULE}" ] ; then
 		# echo "DEBUG: Full path to module specified." 1>&2
-		swmod_findversion_indir "$SWMOD_MODULE" "$SWMOD_MODVER"
+		local SWMOD_PREFIX=`swmod_findversion_indir "$SWMOD_MODULE" "$SWMOD_MODVER"`
 		if [ "${SWMOD_PREFIX}" != "" ] ; then return; fi
 	fi
 
@@ -151,8 +108,9 @@ swmod_getprefix() {
 			if [ -d "${dir}" ]; then
 				# echo "DEBUG: Checking module dir \"${dir}\"" 1>&2
 				if [ -d "${dir}/${SWMOD_MODULE}" ]; then
-					swmod_findversion_indir "${dir}/${SWMOD_MODULE}" "$SWMOD_MODVER"
+					local SWMOD_PREFIX=`swmod_findversion_indir "${dir}/${SWMOD_MODULE}" "$SWMOD_MODVER"`
 					if [ "${SWMOD_PREFIX}" != "" ] ; then
+						echo "${SWMOD_PREFIX}"
 						return;
 					fi
 				fi
@@ -164,7 +122,7 @@ swmod_getprefix() {
 
 # == init subcommand ==================================================
 
-if [ "${SWMOD_COMMAND}" == "init" ] ; then
+swmod_init() {
 	## Set aliases ##
 
 	alias swmod='source swmod.sh'
@@ -182,31 +140,27 @@ if [ "${SWMOD_COMMAND}" == "init" ] ; then
 	
 	## Determine create default install directories ##
 
-	source swmod.sh setinst "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}"
+	swmod_setinst "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}"
 
 	# Do not fail if SWMOD_INST_PREFIX does not exist and can't be created.
 	if (mkdir -p "${SWMOD_INST_PREFIX}/bin"); then true; fi
 	if (mkdir -p "${SWMOD_INST_PREFIX}/lib"); then true; fi
 	
 	# Load default inst-module
-	if source swmod.sh load "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
+	if swmod_load "${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}@${SWMOD_INST_VERSION}" 2> /dev/null; then true; fi
 
 	
 	## Clear variables and return ##
-	
-	SWMOD_COMMAND=
-	
-	return 0
-fi
+}
 
 
 
 # == load subcommand ==================================================
 
-if [ "${SWMOD_COMMAND}" == "load" ] ; then
+swmod_load() {
 	## Parse arguments ##
 
-	SWMOD_MODSPEC=$1
+	local SWMOD_MODSPEC=$1
 
 	if [ "${SWMOD_MODSPEC}" == "" ] ; then
 		echo "Syntax: swmod load MODULE[@VERSION]"
@@ -220,7 +174,7 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 
 	## Detect prefix ##
 
-	swmod_getprefix "${SWMOD_MODSPEC}"
+	local SWMOD_PREFIX=`swmod_getprefix "${SWMOD_MODSPEC}"`
 
 	if [ "${SWMOD_PREFIX}" == "" ] ; then
 		echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
@@ -247,8 +201,11 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 		export PKG_CONFIG_PATH="${SWMOD_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 	fi
 
-	if [ -x "${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages" ] ; then
-		PYTHONPATH="${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+	
+	## Check for python packages
+	local SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
+	if [ -d "${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages" ] ; then
+		export PYTHONPATH="${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
 	fi
 
 
@@ -269,26 +226,17 @@ if [ "${SWMOD_COMMAND}" == "load" ] ; then
 		export ROOTSYS="${SWMOD_PREFIX}"
 		export PYTHONPATH="${ROOTSYS}/lib:${PYTHONPATH}"
 	fi
-
-	
-	## Clear variables and return ##
-	
-	SWMOD_PREFIX=
-	SWMOD_MODULE=
-	SWMOD_MODVER=
-	
-	return 0
-fi
+}
 
 
 
 # == setinst subcommand ==================================================
 
-if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
+swmod_setinst() {
 	## Parse arguments ##
 
-	SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
-	SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
+	local SWMOD_MODULE=`echo "${1}@" | cut -d '@' -f 1`
+	local SWMOD_MODVER=`echo "${1}@" | cut -d '@' -f 2`
 
 	if [ "${SWMOD_MODULE}" == "" ] ; then
 		echo "Syntax: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
@@ -303,11 +251,11 @@ if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
 	if [ "${SWMOD_MODULE}" != `basename "${SWMOD_MODULE}"` ] ; then
 	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
 		export SWMOD_INST_BASE=`dirname "${SWMOD_MODULE}"`
-		SWMOD_MODULE=`basename "${SWMOD_MODULE}"`
+		local SWMOD_MODULE=`basename "${SWMOD_MODULE}"`
 	fi
 
 	# For backwards compatibility (specification of version as second parameter)
-	if [ "${SWMOD_MODVER}" == "" ] ; then SWMOD_MODVER="$2"; fi
+	if [ "${SWMOD_MODVER}" == "" ] ; then local SWMOD_MODVER="$2"; fi
 
 	export SWMOD_INST_MODULE="${SWMOD_MODULE}"
 	export SWMOD_INST_VERSION="${SWMOD_MODVER}"
@@ -318,25 +266,17 @@ if [ "${SWMOD_COMMAND}" == "setinst" ] ; then
 			export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
 		fi
 	fi
-
-	
-	## Clear variables and return ##
-	
-	SWMOD_MODULE=
-	SWMOD_MODVER=
-	
-	return 0
-fi
-
+}
 
 
 # == configure subcommand =============================================
 
-if [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then
-	CONFIGURE="${SWMOD_COMMAND}"
+swmod_configure() {
+	local CONFIGURE="$1"
+	shift 1
 
 	if [ "${CONFIGURE}" == "configure" ] ; then
-		CONFIGURE="./configure"
+		local CONFIGURE="./configure"
 	fi
 
 	if [ ! -x "${CONFIGURE}" ] ; then
@@ -353,18 +293,62 @@ if [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then
 	CPPFLAGS="$CPPFLAGS ${SWMOD_CPPFLAGS}" \
 		LDFLAGS="$LDFLAGS ${SWMOD_LDFLAGS}" \
 		"${CONFIGURE}" --prefix="${SWMOD_INST_PREFIX}" "$@"
+}
 
 
-	## Clear variables and return ##
+# == main =============================================================
 
-	CONFIGURE=
-	
-	return 0
+# Check if we're running in a bash
+
+if ! (ps $$ | grep -q bash) ; then
+	echo "Error: swmod only works in a bash environment for now - sorry." 1>&2
+	return 1
 fi
 
 
-# == unknown command ==================================================
+# Check HOSTSPEC
 
-echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
+if [ "${HOSTSPEC}" == "" ] ; then
+	export HOSTSPEC="`hostspec`"
+	if [ "${HOSTSPEC}" == "" ] ; then
+		echo "Error: Could not determine host specification." 1>&2
+		return 1
+	fi
+fi
+
+
+# Get subcommand
+
+SWMOD_COMMAND="$1"
+shift 1
+
+if [ "${SWMOD_COMMAND}" == "" ] ; then
+echo >&2 "Usage: ${0} COMMAND OPTIONS"
+cat >&2 <<EOF
+Software module handling
+
+COMMANDS:
+  init                        Set aliases, variables and create directories.
+  load                        Load a module.
+  setinst                     Set target module for software package installation.
+  configure                   Run a configure script with suitable options
+							  to install a software package into a module.
+							  You may specify the full path of the script instead,
+							  e.g. ./configure or some-path/configure.
+EOF
 return 1
+fi
 
+if [ "${SWMOD_COMMAND}" == "init" ] ; then swmod_init "$@"
+elif [ "${SWMOD_COMMAND}" == "load" ] ; then swmod_load "$@"
+elif [ "${SWMOD_COMMAND}" == "setinst" ] ; then swmod_setinst "$@"
+elif [ X`basename "${SWMOD_COMMAND}"` == X"configure" ] ; then swmod_configure "${SWMOD_COMMAND}" "$@"
+else
+	echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
+	return 1
+fi
+
+
+# Clear variables
+
+SWMOD_COMMAND=
