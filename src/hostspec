@@ -37,35 +37,35 @@ fi
 
 UNAME_KERNEL=`uname -s`
 
-if [ "${UNAME_KERNEL}" == 'Linux' ] ; then
+if [ "${UNAME_KERNEL}" = 'Linux' ] ; then
 	OS="linux"
 
 	DIST=`lsb_release -s -i`
-	if [ "${DIST}" == "Debian" ] ; then
+	if [ "${DIST}" = "Debian" ] ; then
 		DIST='debian'
-	elif [ "${DIST}" == "Ubuntu" ] ; then
+	elif [ "${DIST}" = "Ubuntu" ] ; then
 		DIST='ubuntu'
-	elif [ "${DIST}" == "SUSE LINUX" ] ; then
+	elif [ "${DIST}" = "SUSE LINUX" ] ; then
 		DIST='suse'
-	elif [ "${DIST}" == "Gentoo" ] ; then
+	elif [ "${DIST}" = "Gentoo" ] ; then
 		DIST='gentoo'
-	elif [ "${DIST}" == "FedoraCore" ] ; then
+	elif [ "${DIST}" = "FedoraCore" ] ; then
 		DIST='fedora'
-	elif [ "${DIST}" == "RedHatEnterpriseAS" ] ; then
+	elif [ "${DIST}" = "RedHatEnterpriseAS" ] ; then
 		DIST='rhel'
-	elif [ "${DIST}" == "RedHatEnterpriseES" ] ; then
+	elif [ "${DIST}" = "RedHatEnterpriseES" ] ; then
 		DIST='rhel'
-	elif [ "${DIST}" == "RedHatEnterpriseWS" ] ; then
+	elif [ "${DIST}" = "RedHatEnterpriseWS" ] ; then
 		DIST='rhel'
-	elif [ "${DIST}" == "CentOS" ] ; then
+	elif [ "${DIST}" = "CentOS" ] ; then
 		DIST='centos'
-	elif [ "${DIST}" == "Scientific Linux" ] ; then
+	elif [ "${DIST}" = "Scientific Linux" ] ; then
 		DIST='slc'
-	elif [ "${DIST}" == "ScientificSL" ] ; then
+	elif [ "${DIST}" = "ScientificSL" ] ; then
 		DIST='slc'
-	elif [ "${DIST}" == "Scientific Linux CERN" ] ; then
+	elif [ "${DIST}" = "Scientific Linux CERN" ] ; then
 		DIST='slc'
-	elif [ "${DIST}" == "ScientificCERNSLC" ] ; then
+	elif [ "${DIST}" = "ScientificCERNSLC" ] ; then
 		DIST='slc'
 	fi
 	
@@ -76,12 +76,12 @@ if [ "${UNAME_KERNEL}" == 'Linux' ] ; then
 	CPU=`uname -m`
 
 	echo "${OS}-${DIST}-${REL}-${CPU}"
-elif [ "${UNAME_KERNEL}" == 'SunOS' ] ; then
+elif [ "${UNAME_KERNEL}" = 'SunOS' ] ; then
 	OS="sunos"
 	REL=`uname -r`
 	CPU=`uname -m`
 	echo "${OS}-${REL}-${CPU}"
-elif [ "${UNAME_KERNEL}" == 'Darwin' ] ; then
+elif [ "${UNAME_KERNEL}" = 'Darwin' ] ; then
 	OS="osx"
 	REL=`sw_vers -productVersion`
 	CPU=`uname -m`
