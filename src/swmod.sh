@@ -26,7 +26,7 @@ swmod_findversion_indir() {
 
 	if test "${2}" = "" ; then # no version specified
 		# echo "DEBUG: No version specified." 1>&2
-		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' -o '(' -f "$1/${HOSTSPEC}/swmod.deps" ')' ] ; then
+		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' -o '(' -f "$1/${HOSTSPEC}/swmod.deps" ')' ] ; then
 			# echo "DEBUG: module seems to be unversioned." 1>&2
 			local SWMOD_PREFIX="$1/${HOSTSPEC}"
 			echo "${SWMOD_PREFIX}"
@@ -34,7 +34,7 @@ swmod_findversion_indir() {
 		else
 			local v
 			for v in default production prod; do
-				if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+				if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
 					echo "Assuming module version \"$v\"" 1>&2
 					local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
 					echo "${SWMOD_PREFIX}"
@@ -45,7 +45,7 @@ swmod_findversion_indir() {
 				local spcand
 				while read spcand; do
 					local v=`basename "${spcand}"`
-					if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+					if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
 						echo "Assuming module version \"$v\"" 1>&2
 						local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
 						echo "${SWMOD_PREFIX}"
@@ -180,31 +180,37 @@ swmod_load() {
 
 	export PATH="${SWMOD_PREFIX}/bin:$PATH"
 
-	if test "`echo ${HOSTSPEC} | cut -d '-' -f 1`" = "osx" ; then
-		export DYLD_LIBRARY_PATH="${SWMOD_PREFIX}/lib:$DYLD_LIBRARY_PATH"
+	if test -d "${SWMOD_PREFIX}/lib64" ; then
+		local LIBDIR="${SWMOD_PREFIX}/lib64"
 	else
-		export LD_LIBRARY_PATH="${SWMOD_PREFIX}/lib:$LD_LIBRARY_PATH"
+		local LIBDIR="${SWMOD_PREFIX}/lib"
+	fi
+
+	if test "`echo ${HOSTSPEC} | cut -d '-' -f 1`" = "osx" ; then
+		export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+	else
+		export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
 	fi
 
 	export MANPATH="`manpath 2> /dev/null`:${SWMOD_PREFIX}/man"
 
 	if (pkg-config --version &> /dev/null); then
 		# pkg-config available
-		export PKG_CONFIG_PATH="${SWMOD_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
+		export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
 	fi
 
 	
 	## Check for python packages
 	local SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
-	if [ -d "${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages" ] ; then
-		export PYTHONPATH="${SWMOD_PREFIX}/lib/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+	if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
+		export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
 	fi
 
 
 	## Set SWMOD compiler and linker search paths ##
 
 	export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
-	export SWMOD_LDFLAGS="-L${SWMOD_PREFIX}/lib $SWMOD_LDFLAGS"
+	export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
 
 
 	## Application specific settings ##
