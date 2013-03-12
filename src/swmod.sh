@@ -192,7 +192,7 @@ swmod_load() {
 		export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
 	fi
 
-	export MANPATH="`manpath 2> /dev/null`:${SWMOD_PREFIX}/man"
+	export MANPATH="${SWMOD_PREFIX}/share/man:`manpath 2> /dev/null`"
 
 	if (pkg-config --version &> /dev/null); then
 		# pkg-config available
