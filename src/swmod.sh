@@ -356,14 +356,14 @@ cat >&2 <<EOF
 Software module handling
 
 COMMANDS:
-  init                        Set aliases, variables and create directories.
-  load                        Load a module.
-  setinst                     Set target module for software package installation.
-  adddeps                     Add dependencies to the current install target.
-  configure                   Run a configure script with suitable options
-							  to install a software package into a module.
-							  You may specify the full path of the script instead,
-							  e.g. ./configure or some-path/configure.
+  init                Set aliases, variables and create directories.
+  load                Load a module.
+  setinst             Set target module for software package installation.
+  adddeps             Add dependencies to the current install target.
+  configure           Run a configure script with suitable options
+                      to install a software package into a module.
+                      You may specify the full path of the script instead,
+                      e.g. ./configure or some-path/configure.
 EOF
 return 1
 fi
