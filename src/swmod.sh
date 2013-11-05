@@ -324,6 +324,53 @@ swmod_configure() {
 }
 
 
+# == install subcommand =============================================
+
+swmod_install() {
+	local NCORES=`grep -c 'model name' /proc/cpuinfo`
+
+	if test -x "autogen.sh" -o -x "configure"; then
+		echo "INFO: Autoconf / configure based build system detected" 1>&2
+
+		if test -f "Makefile.am"; then
+			local NPROCS="${NCORES}"
+			echo "INFO: Automake detected, will run parallel build on ${NCORES} CPU cores." 1>&2
+		else
+			local NPROCS=1
+			echo "INFO: No automake detected, parallel build may not be safe, using single-core build." 1>&2
+		fi
+
+		if test -f "Makefile"; then
+			echo "INFO: Existing \"Makefile\" detected, running \"make clean\"." 1>&2
+			make clean
+		fi
+
+		if test -x "configure"; then
+			echo "INFO: Using existing \"configure\"" 1>&2
+			swmod_configure ./configure "$@" &&
+				make "-j${NPROCS}" &&
+				make install &&
+				(make distclean ||
+					(echo "WARN: Couldn't run \"make distclean\", falling back to \"make clean\"." 1>&2 &&
+						make clean)
+				)
+		else
+			echo "INFO: No \"configure\", have to run autogen.sh first" 1>&2
+			./autogen.sh &&
+			swmod_configure ./configure "$@" &&
+				make "-j${NPROCS}" &&
+				make install &&
+				(make maintainer-clean ||
+					(echo "WARN: Couldn't run \"make maintainer-clean\", falling back to \"make clean\"." 1>&2 &&
+						make clean)
+				)
+		fi
+	else
+		echo "ERROR: Can't find (supported) build system current directory." 1>&2
+	fi
+}
+
+
 # == main =============================================================
 
 # Check if we're running in a bash
@@ -364,6 +411,8 @@ COMMANDS:
                       to install a software package into a module.
                       You may specify the full path of the script instead,
                       e.g. ./configure or some-path/configure.
+  install             Run all necessary steps to build and install software
+                      package. Arguments are passed on to "configure".
 EOF
 return 1
 fi
@@ -373,6 +422,7 @@ elif test "${SWMOD_COMMAND}" = "load" ; then swmod_load "$@"
 elif test "${SWMOD_COMMAND}" = "setinst" ; then swmod_setinst "$@"
 elif test "${SWMOD_COMMAND}" = "adddeps" ; then swmod_adddeps "$@"
 elif test x`basename "${SWMOD_COMMAND}"` = x"configure" ; then swmod_configure "${SWMOD_COMMAND}" "$@"
+elif test "${SWMOD_COMMAND}" = "install" ; then swmod_install "$@"
 else
 	echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
 	return 1
