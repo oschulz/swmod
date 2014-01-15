@@ -113,3 +113,25 @@ instead of
 
 since the `swmod` alias that is set up by `source swmod.sh init` does not work in
 shell scripts.
+
+
+### Module-specific init scripts
+
+If your software module requires special initialization, environment variables,
+etc., a create shell script named `swmodrc.sh` inside `$SWMOD_INST_PREFIX`.
+`swmod load` will source this script - after loading the dependencies of the
+module, but before modifying environment variables (`PATH`, ...) for the module
+itself. Environment variables already modified by `swmodrc.sh` are skipped by
+swmod afterwards, instead of changing them in the usual fashion.
+
+The variable `SWMOD_INST_PREFIX` is available from within `swmodrc.sh`. Also,
+the command `swmod_load` is available from within `swmodrc.sh`, to manually
+load other modules.
+
+For example, if the software in question already provides a script like
+`bin/env.sh`, to set all paths and so on, just create an `swmodrc.sh`
+containing
+
+    . "$SWMOD_PREFIX/bin/env.sh"
+
+inside the `$SWMOD_INST_PREFIX` directory.

@@ -176,9 +176,32 @@ swmod_load() {
 		done
 	fi
 
+
+	## Current environment variables ##
+
+	local SWMOD_PREV_PATH="$PATH"
+	local SWMOD_PREV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+	local SWMOD_PREV_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+	local SWMOD_PREV_MANPATH="$MANPATH"
+	local SWMOD_PREV_PYTHONPATH="$PYTHONPATH"
+	local SWMOD_PREV_ROOTSYS="$ROOTSYS"
+
+
+	## Module-specific init script ##
+
+	if [ -f "${SWMOD_PREFIX}/swmodrc.sh" ] ; then
+		echo "Sourcing \"${SWMOD_PREFIX}/swmodrc.sh\"." 1>&2
+		. "${SWMOD_PREFIX}/swmodrc.sh"
+	fi
+	
+
 	## Set standards paths and variables ##
 
-	export PATH="${SWMOD_PREFIX}/bin:$PATH"
+	if test "$PATH" = "$SWMOD_PREV_PATH" ; then
+		export PATH="${SWMOD_PREFIX}/bin:$PATH"
+	else
+		echo "PATH already modified by module init script, skipping." 1>&2
+	fi
 
 	if test -d "${SWMOD_PREFIX}/lib64" ; then
 		local LIBDIR="${SWMOD_PREFIX}/lib64"
@@ -187,12 +210,24 @@ swmod_load() {
 	fi
 
 	if test "`echo ${HOSTSPEC} | cut -d '-' -f 1`" = "osx" ; then
-		export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+		if test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
+			export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+		else
+			echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
 	else
-		export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
+		if test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
+			export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
+		else
+			echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
 	fi
 
-	export MANPATH="${SWMOD_PREFIX}/share/man:`manpath 2> /dev/null`"
+	if test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
+		export MANPATH="${SWMOD_PREFIX}/share/man:`manpath 2> /dev/null`"
+	else
+		echo "MANPATH already modified by module init script, skipping." 1>&2
+	fi
 
 	if (pkg-config --version &> /dev/null); then
 		# pkg-config available
@@ -201,9 +236,31 @@ swmod_load() {
 
 	
 	## Check for python packages
-	local SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
-	if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
-		export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+
+	if test "$PYTHONPATH" = "$SWMOD_PREV_PYTHONPATH" ; then
+		local SWMOD_PYTHON_V=`python -V 2>&1 | grep -o '[0-9]\+\.[0-9]\+'`
+		if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
+			export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+		fi
+	else
+		echo "PYTHONPATH already modified by module init script, skipping." 1>&2
+	fi
+
+
+	## CERN ROOT System support ##
+
+	if test "$ROOTSYS" = "$SWMOD_PREV_ROOTSYS" ; then
+		if [ -x "${SWMOD_PREFIX}/bin/root-config" ] ; then
+			# The ROOT-System itself does not use the ROOTSYS variable anymore
+			# since version 5.20. However, the build systems of many software
+			# packages linking against ROOT still depend on it to locate the ROOT
+			# installation (instead of just using root-config).
+			echo "Detected CERN ROOT System, setting ROOTSYS." 1>&2
+			export ROOTSYS="${SWMOD_PREFIX}"
+			export PYTHONPATH="${ROOTSYS}/lib:${PYTHONPATH}"
+		fi
+	else
+		echo "ROOTSYS already set by module init script, skipping." 1>&2
 	fi
 
 
@@ -211,19 +268,6 @@ swmod_load() {
 
 	export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
 	export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
-
-
-	## Application specific settings ##
-
-	if [ -x "${SWMOD_PREFIX}/bin/root-config" ] ; then
-		# The ROOT-System itself does not use the ROOTSYS variable anymore
-		# since version 5.20. However, the build systems of many software
-		# packages linking against ROOT still depend on it to locate the ROOT
-		# installation (instead of just using root-config).
-		echo "Detected CERN ROOT System, setting ROOTSYS." 1>&2
-		export ROOTSYS="${SWMOD_PREFIX}"
-		export PYTHONPATH="${ROOTSYS}/lib:${PYTHONPATH}"
-	fi
 }
 
 
