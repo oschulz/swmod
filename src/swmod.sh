@@ -224,7 +224,11 @@ swmod_load() {
 	fi
 
 	if test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
-		export MANPATH="${SWMOD_PREFIX}/share/man:`manpath 2> /dev/null`"
+		if test -d "${SWMOD_PREFIX}/man" ; then
+			export MANPATH="${SWMOD_PREFIX}/man:`manpath 2> /dev/null`"
+		else
+			export MANPATH="${SWMOD_PREFIX}/share/man:`manpath 2> /dev/null`"
+		fi
 	else
 		echo "MANPATH already modified by module init script, skipping." 1>&2
 	fi
