@@ -476,7 +476,11 @@ else
 	return 1
 fi
 
+# Save swmod command return code
+RC="$?"
 
 # Clear variables
-
 SWMOD_COMMAND=
+
+# Emit swmod command return code
+return "$RC"
