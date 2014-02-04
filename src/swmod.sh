@@ -183,6 +183,7 @@ swmod_load() {
 	local SWMOD_PREV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 	local SWMOD_PREV_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
 	local SWMOD_PREV_MANPATH="$MANPATH"
+	local SWMOD_PREV_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
 	local SWMOD_PREV_PYTHONPATH="$PYTHONPATH"
 	local SWMOD_PREV_ROOTSYS="$ROOTSYS"
 
@@ -234,8 +235,12 @@ swmod_load() {
 	fi
 
 	if (pkg-config --version &> /dev/null); then
-		# pkg-config available
-		export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
+		if test "$PKG_CONFIG_PATH" = "$SWMOD_PREV_PKG_CONFIG_PATH" ; then
+			# pkg-config available
+			export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
+		else
+			echo "MANPATH already modified by module init script, skipping." 1>&2
+		fi
 	fi
 
 	
