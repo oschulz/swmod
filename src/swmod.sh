@@ -177,10 +177,15 @@ swmod_load() {
 		echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
 	fi
 
+	local SETCLFLAGS="no"
 	if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
 		for dep in `cat "${SWMOD_PREFIX}/swmod.deps"`; do
-			echo "Resolving dependency ${dep}" 1>&2
-			swmod_load "${dep}"
+			if test "${dep}" = "!clflags"; then
+				local SETCLFLAGS="yes"
+			else
+				echo "Resolving dependency ${dep}" 1>&2
+				swmod_load "${dep}"
+			fi
 		done
 	fi
 
@@ -264,10 +269,11 @@ swmod_load() {
 	fi
 
 
-	## Set SWMOD compiler and linker search paths ##
-
-	export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
-	export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
+	## Optionally add module to compiler and linker search path ##
+	if test "${SETCLFLAGS}" = "yes"; then
+		export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
+		export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
+	fi
 }
 
 

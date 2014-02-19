@@ -57,6 +57,15 @@ loaded when you load your module:
 
     # swmod load mysoftware@1.2.3
 
+You may also add the special dependency `!clflags`. If added to a module, the
+include and library directories in the module will be added with `-I` and `-L`
+options to the environment variables `SWMOD_CPPFLAGS` and `SWMOD_LDFLAGS`.
+`swmod configure` and similar try to pass these through to the build system of
+packages to be configured or installed. Usually, this is not necessary as
+modern software uses mechanisms like `...-config` or `pkg-config ...` to get
+the necessary compiler and linker options for their dependencies. Where such
+a mechanism is not provided, adding the special depencency `!clflags` can help.
+
 Now, configure, build and install your software. Using `swmod ./configure`
 instead of just `.configure` will set the correct install prefix (`configure`
 must support the usual options like `--prefix` for this to work).
