@@ -440,6 +440,41 @@ swmod_install() {
 }
 
 
+# == instpkg subcommand =============================================
+
+swmod_instpkg() {
+	local PKGSRC="$1"
+	shift 1
+
+	if test -z "${PKGSRC}"; then
+		echo "Syntax: swmod instpkg SOURCE [CONFIGURE_OPTION] ..."
+		echo ""
+		echo "Uses rsync internally to copy sources to $TMPDIR, PKGSRC may be any rsync-compatible"
+		echo "source specification (local or remote)."
+		return 1
+	fi
+
+	BUILDDIR=`mktemp -t -d "$(whoami)-build-XXXXXX"`
+	echo "Build directory: \"${BUILDDIR}\""
+
+	rsync -rlpt "${PKGSRC}/" "${BUILDDIR}/"
+
+	BUILDOK=false
+	(
+		cd "${BUILDDIR}" \
+		&& (make maintainer-clean || make distclean || make clean || true) \
+		&& swmod_install "$@"
+	) && (
+		echo "Installation successful."
+		rm -rf "${BUILDDIR}"
+		return 0
+	) || (
+		echo "ERROR: Installation failed, build directory: \"${BUILDDIR}\"" 1>&2
+		return 1
+	)
+}
+
+
 # == main =============================================================
 
 # Check if we're running in a bash
@@ -492,8 +527,12 @@ COMMANDS
                       but doesn't exist, swmod will try to generate it by
                       running "autogen.sh" (if present) or autoreconf.
 
-  install             Run all necessary steps to build and install software
-                      package. Arguments are passed on to "configure".
+  install             Run all necessary steps to build and install the software
+                      package in the current directory. Arguments are passed on
+                      to "configure".
+
+  instpkg             Similar to install, but installs a software package from a
+                      given location and performs the build in $TMPDIR.
 
 ENVIRONMENT VARIABLES
 ---------------------
@@ -515,6 +554,7 @@ elif test "${SWMOD_COMMAND}" = "setinst" ; then swmod_setinst "$@"
 elif test "${SWMOD_COMMAND}" = "adddeps" ; then swmod_adddeps "$@"
 elif test x`basename "${SWMOD_COMMAND}"` = x"configure" ; then swmod_configure "${SWMOD_COMMAND}" "$@"
 elif test "${SWMOD_COMMAND}" = "install" ; then swmod_install "$@"
+elif test "${SWMOD_COMMAND}" = "instpkg" ; then swmod_instpkg "$@"
 else
 	echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
 	return 1
