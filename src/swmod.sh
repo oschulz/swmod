@@ -264,23 +264,6 @@ swmod_load() {
 	fi
 
 
-	## CERN ROOT System support ##
-
-	if test "$ROOTSYS" = "$SWMOD_PREV_ROOTSYS" ; then
-		if [ -x "${SWMOD_PREFIX}/bin/root-config" ] ; then
-			# The ROOT-System itself does not use the ROOTSYS variable anymore
-			# since version 5.20. However, the build systems of many software
-			# packages linking against ROOT still depend on it to locate the ROOT
-			# installation (instead of just using root-config).
-			echo "Detected CERN ROOT System, setting ROOTSYS." 1>&2
-			export ROOTSYS="${SWMOD_PREFIX}"
-			export PYTHONPATH="${ROOTSYS}/lib:${PYTHONPATH}"
-		fi
-	else
-		echo "ROOTSYS already set by module init script, skipping." 1>&2
-	fi
-
-
 	## Set SWMOD compiler and linker search paths ##
 
 	export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
