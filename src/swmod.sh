@@ -141,6 +141,14 @@ swmod_init() {
 
 
 
+# == hostspec subcommand ==============================================
+
+swmod_hostspec() {
+	echo "${HOSTSPEC}"
+}
+
+
+
 # == load subcommand ==================================================
 
 swmod_load() {
@@ -457,6 +465,7 @@ Software module handling
 
 COMMANDS:
   init                Set aliases, variables and create directories.
+  hostspec            Show value of HOSTSPEC variable
   load                Load a module.
   setinst             Set target module for software package installation.
   adddeps             Add dependencies to the current install target.
@@ -466,11 +475,20 @@ COMMANDS:
                       e.g. ./configure or some-path/configure.
   install             Run all necessary steps to build and install software
                       package. Arguments are passed on to "configure".
+
+ENVIRONMENT VARIABLES:
+  HOSTSPEC            The host specification string, describing the system / OS
+                      type, e.g. "linux-ubuntu-12.04-x86_64". swmod always
+                      checks this variable. If not set, it will try to get the
+                      host specification from running the command "hostspec",
+                      and then set it accordingly. If HOSTSPEC cannot be
+                      determined, swmod will fail.
 EOF
 return 1
 fi
 
 if test "${SWMOD_COMMAND}" = "init" ; then swmod_init "$@"
+elif test "${SWMOD_COMMAND}" = "hostspec" ; then swmod_hostspec "$@"
 elif test "${SWMOD_COMMAND}" = "load" ; then swmod_load "$@"
 elif test "${SWMOD_COMMAND}" = "setinst" ; then swmod_setinst "$@"
 elif test "${SWMOD_COMMAND}" = "adddeps" ; then swmod_adddeps "$@"
