@@ -324,6 +324,10 @@ swmod_setinst() {
 		if test "${SWMOD_INST_VERSION}" != "" ; then
 			export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
 		fi
+		echo "Set install prefix to \"${SWMOD_INST_PREFIX}\""
+		true
+	else
+		false
 	fi
 }
 
