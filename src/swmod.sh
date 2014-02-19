@@ -372,6 +372,22 @@ swmod_configure() {
 		local CONFIGURE="./configure"
 	fi
 
+	if test "${CONFIGURE}" = "./configure" ; then
+		if test ! -f "configure" ; then
+			if test -f "autogen.sh" ; then
+				echo "INFO: No \"configure\" file here, running autogen.sh" 1>&2
+				./autogen.sh || rm -f configure
+			elif test -f "configure.in" -o -f "configure.ac" ; then
+				echo "INFO: No \"configure\" file here, running autoreconf" 1>&2
+				autoreconf || rm -f configure
+			fi
+			if test ! -f "configure" ; then
+				echo "ERROR: Unable to generate \"configure\" file here" 1>&2
+				return 1
+			fi
+		fi
+	fi
+
 	if [ ! -x "${CONFIGURE}" ] ; then
 		echo "Error: ${CONFIGURE} does not exist or is not executable." 1>&2
 	fi
@@ -394,7 +410,7 @@ swmod_configure() {
 swmod_install() {
 	local NCORES=`grep -c 'model name' /proc/cpuinfo`
 
-	if test -x "autogen.sh" -o -x "configure"; then
+	if test -x "autogen.sh" -o -x "configure" -o -f "configure.in" -o -f "configure.ac"; then
 		echo "INFO: Autoconf / configure based build system detected" 1>&2
 
 		if test -f "Makefile.am"; then
@@ -410,26 +426,14 @@ swmod_install() {
 			make clean
 		fi
 
-		if test -x "configure"; then
-			echo "INFO: Using existing \"configure\"" 1>&2
-			swmod_configure ./configure "$@" &&
-				make "-j${NPROCS}" &&
-				make install &&
-				(make distclean ||
-					(echo "WARN: Couldn't run \"make distclean\", falling back to \"make clean\"." 1>&2 &&
-						make clean)
-				)
-		else
-			echo "INFO: No \"configure\", have to run autogen.sh first" 1>&2
-			./autogen.sh &&
-			swmod_configure ./configure "$@" &&
-				make "-j${NPROCS}" &&
-				make install &&
-				(make maintainer-clean ||
-					(echo "WARN: Couldn't run \"make maintainer-clean\", falling back to \"make clean\"." 1>&2 &&
-						make clean)
-				)
-		fi
+		echo "INFO: Using existing \"configure\"" 1>&2
+		swmod_configure ./configure "$@" &&
+			make "-j${NPROCS}" &&
+			make install &&
+			( make maintainer-clean || make distclean ||
+				(echo "WARN: Couldn't run \"make maintainer-clean\" or \"make distclean\", falling back to \"make clean\"." 1>&2 &&
+					make clean)
+			)
 	else
 		echo "ERROR: Can't find (supported) build system current directory." 1>&2
 	fi
@@ -467,20 +471,33 @@ echo >&2 "Usage: ${0} COMMAND OPTIONS"
 cat >&2 <<EOF
 Software module handling
 
-COMMANDS:
+COMMANDS
+--------
+
   init                Set aliases, variables and create directories.
+
   hostspec            Show value of HOSTSPEC variable
+
   load                Load a module.
+
   setinst             Set target module for software package installation.
+
   adddeps             Add dependencies to the current install target.
-  configure           Run a configure script with suitable options
-                      to install a software package into a module.
-                      You may specify the full path of the script instead,
-                      e.g. ./configure or some-path/configure.
+
+  configure           Run a configure script with suitable options to install a
+                      software package into a module. You may specify the full
+                      path of the script instead of "configure", e.g.
+                      "./configure" or "some-path/configure". If a local
+                      configure file ("configure" or "./configure") is specified
+                      but doesn't exist, swmod will try to generate it by
+                      running "autogen.sh" (if present) or autoreconf.
+
   install             Run all necessary steps to build and install software
                       package. Arguments are passed on to "configure".
 
-ENVIRONMENT VARIABLES:
+ENVIRONMENT VARIABLES
+---------------------
+
   HOSTSPEC            The host specification string, describing the system / OS
                       type, e.g. "linux-ubuntu-12.04-x86_64". swmod always
                       checks this variable. If not set, it will try to get the
