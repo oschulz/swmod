@@ -17,6 +17,33 @@
 
 # == functions ========================================================
 
+swmod_is_valid_prefix() {
+	# Arguments: prefix
+
+	local DIR="$1"
+	test '(' -d "${DIR}/bin" ')' \
+		-o '(' -d "${DIR}/lib" ')' -o '(' -d "${DIR}/lib64" ')' \
+		-o '(' -d "${DIR}/include" ')' \
+		-o '(' -f "${DIR}/swmod.deps" ')' -o '(' -f "${DIR}/swmodrc.sh" ')'
+}
+
+
+swmod_version_match() {
+	# Arguments: full_version partial_version_to_match
+
+	local a="$1"
+	local b="$2"
+	case "$a" in
+	"$b")
+		# echo "DEBUG: Full version match." 1>&2
+		return ;;
+	"$b"*)
+		# echo "DEBUG: Version substring match." 1>&2
+		return ;;
+	esac
+	return 1
+}
+
 swmod_findversion_indir() {
 	# Arguments: module_dir, module_version
 	# echo "DEBUG: Searching for version \"$2\" in directory \"$1\"" 1>&2
@@ -26,7 +53,7 @@ swmod_findversion_indir() {
 
 	if test "${2}" = "" ; then # no version specified
 		# echo "DEBUG: No version specified." 1>&2
-		if [ '(' -d "$1/${HOSTSPEC}/bin" ')' -o '(' -d "$1/${HOSTSPEC}/lib" ')' -o '(' -d "$1/${HOSTSPEC}/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/include" ')' -o '(' -f "$1/${HOSTSPEC}/swmod.deps" ')' ] ; then
+		if swmod_is_valid_prefix "$1/${HOSTSPEC}" ; then
 			# echo "DEBUG: module seems to be unversioned." 1>&2
 			local SWMOD_PREFIX="$1/${HOSTSPEC}"
 			echo "${SWMOD_PREFIX}"
@@ -34,7 +61,7 @@ swmod_findversion_indir() {
 		else
 			local v
 			for v in default production prod; do
-				if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+				if swmod_is_valid_prefix "$1/${HOSTSPEC}/$v" ; then
 					echo "Assuming module version \"$v\"" 1>&2
 					local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
 					echo "${SWMOD_PREFIX}"
@@ -45,7 +72,7 @@ swmod_findversion_indir() {
 				local spcand
 				while read spcand; do
 					local v=`basename "${spcand}"`
-					if [ '(' -d "$1/${HOSTSPEC}/$v/bin" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib" ')' -o '(' -d "$1/${HOSTSPEC}/$v/lib64" ')' -o '(' -d "$1/${HOSTSPEC}/$v/include" ')' ] ; then
+					if swmod_is_valid_prefix "$1/${HOSTSPEC}/$v" ; then
 						echo "Assuming module version \"$v\"" 1>&2
 						local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
 						echo "${SWMOD_PREFIX}"
@@ -74,13 +101,11 @@ swmod_findversion_indir() {
 		else
 			while read spcand; do
 				local v=`basename "${spcand}"`
-				case $v in
-				"$SWMOD_SPECVER"*)
-					# echo "DEBUG: Substring match." 1>&2
+				if swmod_version_match "$v" "$SWMOD_SPECVER" ; then
 					local SWMOD_PREFIX="$1/${HOSTSPEC}/${v}"
 					echo "${SWMOD_PREFIX}"
 					return
-				esac
+				fi
 			done <<-@SUBST@
 				$( ls "$1/${HOSTSPEC}" 2> /dev/null |sort -r -n )
 			@SUBST@
