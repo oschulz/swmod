@@ -44,8 +44,50 @@ swmod_version_match() {
 	return 1
 }
 
+
+swmod_get_modversion() {
+	# Arguments: prefix
+
+	local prefix="$1"
+	local modver="$1"
+	local pp1=`dirname "$prefix"`
+	local pp2=`dirname "$pp1"`
+	local a=`basename "$prefix"`
+	local b=`basename "$pp1"`
+	local c=`basename "$pp2"`
+
+	if [ "$a" = "$HOSTSPEC" ] ; then
+		echo "${b}"
+		return
+	elif [ "$b" = "$HOSTSPEC" ] ; then
+		echo "${c}@${a}"
+		return
+	else
+		return 1
+	fi
+}
+
+
+swmod_is_loaded() {
+	# Arguments: prefix
+
+	local prefix="$1"
+	local module=`swmod_get_modversion "${prefix}" | cut -d '@' -f 1` || return 1
+	while read -d ':' loadedPrefix; do
+		local loadedModule=`swmod_get_modversion "${loadedPrefix}" | cut -d '@' -f 1 || echo ""`
+		if [ "$loadedModule" = "$module" ] ; then
+			test "$prefix" = "$loadedPrefix" && return 0 || return 1
+		fi
+	done <<-@SUBST@
+		$( echo "${SWMOD_LOADED_PREFIXES}:" )
+	@SUBST@
+	return 1
+}
+
+
 swmod_findversion_indir() {
-	# Arguments: module_dir, module_version
+	# Arguments: module_dir module_version
+
 	# echo "DEBUG: Searching for version \"$2\" in directory \"$1\"" 1>&2
 	if [ ! -d "${1}" ] ; then
 		echo "Internal error: Directory does not exist." 1>&2; return
@@ -201,6 +243,11 @@ swmod_load() {
 	if test "${SWMOD_PREFIX}" = "" ; then
 		echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
 		return 1
+	fi
+
+	if swmod_is_loaded "${SWMOD_PREFIX}" ; then
+		echo "Skipping module \"${SWMOD_PREFIX}\", already loaded" 1>&2
+		return
 	else
 		echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
 	fi
@@ -302,6 +349,8 @@ swmod_load() {
 		export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
 		export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
 	fi
+
+	export SWMOD_LOADED_PREFIXES="${SWMOD_PREFIX}:${SWMOD_LOADED_PREFIXES}"
 }
 
 
