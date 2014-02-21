@@ -127,7 +127,10 @@ swmod_getprefix() {
 	if [ -d "${SWMOD_MODULE}" ] ; then
 		# echo "DEBUG: Full path to module specified." 1>&2
 		local SWMOD_PREFIX=`swmod_findversion_indir "$SWMOD_MODULE" "$SWMOD_MODVER"`
-		if test "${SWMOD_PREFIX}" != "" ; then return; fi
+		if test "${SWMOD_PREFIX}" != "" ; then
+			echo "${SWMOD_PREFIX}"
+			return;
+		fi
 	fi
 
 	if test "${SWMOD_PREFIX}" = "" ; then
