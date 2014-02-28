@@ -487,10 +487,23 @@ swmod_install() {
 			echo "INFO: No automake detected, parallel build may not be safe, using single-core build." 1>&2
 		fi
 
-		echo "INFO: Using existing \"configure\"" 1>&2
-		swmod_configure ./configure "$@" &&
+		if [ -f "configure.in" -a "configure" -nt "configure.in" -o -f "configure.ac" -a "configure" -nt "configure.ac" ] ; then
+			echo "INFO: Keeping existing \"configure\"" 1>&2
+		else
+			echo "Running maintainer-clean" 1>&2
+			(make maintainer-clean || true)
+		fi
+
+		(if [ "Makefile" -nt "configure" ] ; then
+			echo "INFO: Using existing Makefile" 1>&2
+		else
+			echo "Running distclean" 1>&2
+			(make distclean || make clean || true) && swmod_configure ./configure "$@"
+		fi) && (
 			make "-j${NPROCS}" &&
-			make install
+			make install &&
+			echo "Installation successful."
+		)
 	else
 		echo "ERROR: Can't find (supported) build system current directory." 1>&2
 	fi
