@@ -28,19 +28,19 @@
 
 # Allow for overrides:
 if [ "${HOSTSPEC}" != "" ] ; then
-	echo "${HOSTSPEC}"
+	\echo "${HOSTSPEC}"
 	exit 0
 elif [ -f /etc/hostspec ] ; then
-	cat /etc/hostspec | grep -v '^#' | grep -o '[^[:space:]]\+' | head -n 1
+	\cat /etc/hostspec | \grep -v '^#' | \grep -o '[^[:space:]]\+' | \head -n 1
 	exit 0;
 fi
 
-UNAME_KERNEL=`uname -s`
+UNAME_KERNEL=`\uname -s`
 
 if [ "${UNAME_KERNEL}" = 'Linux' ] ; then
 	OS="linux"
 
-	DIST=`lsb_release -s -i`
+	DIST=`\lsb_release -s -i`
 	if [ "${DIST}" = "Debian" ] ; then
 		DIST='debian'
 	elif [ "${DIST}" = "Ubuntu" ] ; then
@@ -70,23 +70,23 @@ if [ "${UNAME_KERNEL}" = 'Linux' ] ; then
 	fi
 	
 	# Remove non-alnum chars from DIST and convert to lowercase:
-	DIST=`echo "${DIST}" | sed 's/[^[:alnum:]]//g' | tr "[:upper:]" "[:lower:]"`
+	DIST=`\echo "${DIST}" | \sed 's/[^[:alnum:]]//g' | \tr "[:upper:]" "[:lower:]"`
 	
-	REL=`lsb_release -s -r`
-	CPU=`uname -m`
+	REL=`\lsb_release -s -r`
+	CPU=`\uname -m`
 
-	echo "${OS}-${DIST}-${REL}-${CPU}"
+	\echo "${OS}-${DIST}-${REL}-${CPU}"
 elif [ "${UNAME_KERNEL}" = 'SunOS' ] ; then
 	OS="sunos"
-	REL=`uname -r`
-	CPU=`uname -m`
-	echo "${OS}-${REL}-${CPU}"
+	REL=`\uname -r`
+	CPU=`\uname -m`
+	\echo "${OS}-${REL}-${CPU}"
 elif [ "${UNAME_KERNEL}" = 'Darwin' ] ; then
 	OS="osx"
-	REL=`sw_vers -productVersion`
-	CPU=`uname -m`
-	echo "${OS}-${REL}-${CPU}"
+	REL=`\sw_vers -productVersion`
+	CPU=`\uname -m`
+	\echo "${OS}-${REL}-${CPU}"
 else
-	echo unknown
+	\echo unknown
 	exit 1
 fi
