@@ -410,15 +410,24 @@ swmod_adddeps() {
 		\echo "Syntax: swmod adddeps MODULE[@VERSION] ..."
 		\echo
 		\echo "This adds the specified modules as dependencies to the" \
-		     "current swmod install target (set by \"swmod setinst\")."
+		      "current swmod install target (set by \"swmod setinst\")." \
+		      "Use \"swmod adddeps none\" to create an empty swmod.deps file."
 		return 1
 	fi
 	
 	\mkdir -p "${SWMOD_INST_PREFIX}"
-	
+
 	for dep in "$@"; do
-		\echo "Adding ${dep} to ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
-		\echo "${dep}" >> "${SWMOD_INST_PREFIX}/swmod.deps"
+		if \test "${dep}" = "none" ; then
+			if [ ! -f "${SWMOD_INST_PREFIX}/swmod.deps" ]; then
+				\echo "Creating empty ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
+				\touch "${SWMOD_INST_PREFIX}/swmod.deps"
+			fi
+			return
+		else
+			\echo "Adding ${dep} to ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
+			\echo "${dep}" >> "${SWMOD_INST_PREFIX}/swmod.deps"
+		fi
 	done
 }
 
