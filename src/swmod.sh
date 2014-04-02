@@ -357,21 +357,44 @@ swmod_load() {
 
 # == setinst subcommand ==================================================
 
+
+usage_setinst() {
+echo >&2 "Usage: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
+cat >&2 <<EOF
+
+Set target module for software package installation.
+
+Options:
+  -?                Show help
+  -i                Initialize module prefix directory if it doesn't exist
+  -l                Load target module
+
+You may specify either the full module path or just the module name, in which
+case swmod will look for the module in the directories specified by the
+SWMOD_MODPATH environment variable.
+EOF
+} # usage_create()
+
+
 swmod_setinst() {
 	## Parse arguments ##
 
-	\local SWMOD_MODULE=`\echo "${1}@" | \cut -d '@' -f 1`
-	\local SWMOD_MODVER=`\echo "${1}@" | \cut -d '@' -f 2`
+	local OPTIND=1
+	while getopts ?il opt
+	do
+		case "$opt" in
+			\?)	usage_setinst; return 1 ;;
+			i) local init_module="yes" ;;
+			l) local load_module="yes" ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
 
-	if \test "${SWMOD_MODULE}" = "" ; then
-		\echo "Syntax: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
-		\echo
-		\echo "You may specify either the full module path or just the" \
-			 "module name, in which case swmod will look for the module in" \
-			 "the directories specified by the SWMOD_MODPATH environment variable"
-		return 1
-	fi
-	
+	\local SWMOD_MODSPEC="${1}"
+	\local SWMOD_MODULE=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 1`
+	\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
+
+	if \test "${SWMOD_MODULE}" = "" ; then usage_setinst; return 1;	fi
 	
 	if \test x"${SWMOD_MODULE}" != x`\basename "${SWMOD_MODULE}"` ; then
 	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
@@ -394,6 +417,16 @@ swmod_setinst() {
 		\true
 	else
 		\false
+	fi
+
+	if [ "${init_module}" = "yes" ] ; then
+		if ! \swmod_is_valid_prefix "${SWMOD_INST_PREFIX}" ; then
+			\swmod_adddeps none
+		fi
+	fi
+
+	if [ "${load_module}" = "yes" ] ; then
+		\swmod_load "${SWMOD_MODSPEC}"
 	fi
 }
 
