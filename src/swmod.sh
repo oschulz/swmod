@@ -71,6 +71,14 @@ swmod_get_modversion() {
 swmod_is_loaded() {
 	# Arguments: prefix
 
+	# Some environments, like the shell started by a "screen" command, do not
+	# inherit special environment variables like LD_LIBRARY_PATH, but do
+	# inhert others like SWMOD_LOADED_PREFIXES. In such an inconsitent state,
+	# clear SWMOD_LOADED_PREFIXES:
+	if [ -z "${LD_LIBRARY_PATH}" ] ; then
+		\unset SWMOD_LOADED_PREFIXES
+	fi
+
 	\local prefix="$1"
 	\local module=`\swmod_get_modversion "${prefix}" | \cut -d '@' -f 1` || return 1
 	while \read -d ':' loadedPrefix; do
