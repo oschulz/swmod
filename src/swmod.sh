@@ -75,7 +75,8 @@ swmod_is_loaded() {
 	# inherit special environment variables like LD_LIBRARY_PATH, but do
 	# inhert others like SWMOD_LOADED_PREFIXES. In such an inconsitent state,
 	# clear SWMOD_LOADED_PREFIXES:
-	if [ -z "${LD_LIBRARY_PATH}" ] ; then
+
+	if \swmod_inside_screen; then
 		\unset SWMOD_LOADED_PREFIXES
 	fi
 
@@ -89,7 +90,26 @@ swmod_is_loaded() {
 	done <<-@SUBST@
 		$( \echo "${SWMOD_LOADED_PREFIXES}:" )
 	@SUBST@
+
 	return 1
+}
+
+
+swmod_inside_screen() {
+	# Arguments: None
+
+
+	# screen sets the $STY environment variable to the alternate socket name.
+	# One could, for more robustness, do an additional check, if the content of $STY
+	# is also returned by the output of 'screen -ls'
+	# \echo "DEBUG: Trying to detect if running inside screen" 1>&2
+	\echo "$STY"
+	if [ -z "${STY}" ] ; then
+		return 1
+	fi
+
+	return 0
+
 }
 
 
