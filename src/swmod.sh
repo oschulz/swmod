@@ -103,7 +103,6 @@ swmod_inside_screen() {
 	# One could, for more robustness, do an additional check, if the content of $STY
 	# is also returned by the output of 'screen -ls'
 	# \echo "DEBUG: Trying to detect if running inside screen" 1>&2
-	\echo "$STY"
 	if [ -z "${STY}" ] ; then
 		return 1
 	fi
