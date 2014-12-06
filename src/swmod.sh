@@ -524,14 +524,14 @@ swmod_configure() {
 # == install subcommand =============================================
 
 swmod_install() {
-	\local NCORES=`\grep -c 'model name' /proc/cpuinfo`
+	\local NCORES=`\grep -c '^processor' /proc/cpuinfo 2>/dev/null || \sysctl -n hw.ncpu 2>/dev/null || \echo 4`
 
 	if \test -x "autogen.sh" -o -x "configure" -o -f "configure.in" -o -f "configure.ac"; then
 		\echo "INFO: Autoconf / configure based build system detected" 1>&2
 
 		if \test -f "Makefile.am"; then
 			\local NPROCS="${NCORES}"
-			\echo "INFO: Automake detected, will run parallel build on ${NCORES} CPU cores." 1>&2
+			\echo "INFO: Automake detected, will run parallel build with ${NCORES} threads." 1>&2
 		else
 			\local NPROCS=1
 			\echo "INFO: No automake detected, parallel build may not be safe, using single-core build." 1>&2
