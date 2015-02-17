@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2013 Oliver Schulz <oliver.schulz@tu-dortmund.de>
+# Copyright (C) 2009-2015 Oliver Schulz <oliver.schulz@tu-dortmund.de>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
