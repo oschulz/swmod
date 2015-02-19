@@ -381,7 +381,7 @@ You may specify either the full module path or just the module name, in which
 case swmod will look for the module in the directories specified by the
 SWMOD_MODPATH environment variable.
 EOF
-} # usage_create()
+} # usage_setinst()
 
 
 swmod_setinst() {
@@ -441,7 +441,37 @@ swmod_setinst() {
 
 # == adddeps subcommand =============================================
 
+usage_setinst() {
+echo >&2 "Usage: swmod adddeps MODULE[@VERSION] ..."
+cat >&2 <<EOF
+
+Add dependencies to current target module.
+
+Options:
+  -?                Show help
+  -l                Load added dependencies immediately in current session
+
+This adds the specified modules as dependencies to the current swmod install
+target (set by "swmod setinst").
+
+Use "swmod adddeps none" to create an empty swmod.deps file.
+EOF
+} # usage_adddeps()
+
+
 swmod_adddeps() {
+	## Parse arguments ##
+
+	local OPTIND=1
+	while getopts ?il opt
+	do
+		case "$opt" in
+			\?)	usage_setinst; return 1 ;;
+			l) local load_deps="yes" ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
+
 	if \test "x${SWMOD_INST_PREFIX}" = "x" ; then
 		\echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
 		return 1
@@ -466,8 +496,25 @@ swmod_adddeps() {
 			fi
 			return
 		else
-			\echo "Adding ${dep} to ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
-			\echo "${dep}" >> "${SWMOD_INST_PREFIX}/swmod.deps"
+			\local newdep="yes";
+			if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
+				for d in `\cat "${SWMOD_INST_PREFIX}/swmod.deps"`; do
+					if \test "${d}" = "${dep}"; then
+						\local newdep="no"
+					fi
+				done
+			fi
+
+			if [ "${newdep}" = "yes" ] ; then
+				\echo "Adding ${dep} to ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
+				\echo "${dep}" >> "${SWMOD_INST_PREFIX}/swmod.deps"
+			else
+				\echo "Dependency ${dep} is already part of ${SWMOD_INST_PREFIX}/swmod.deps" 1>&2
+			fi
+
+			if [ "${load_deps}" = "yes" ] ; then
+				\swmod_load "${dep}"
+			fi
 		fi
 	done
 }
