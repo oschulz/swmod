@@ -374,8 +374,7 @@ Set target module for software package installation.
 
 Options:
   -?                Show help
-  -i                Initialize module prefix directory if it doesn't exist
-  -l                Load target module
+  -l                Load target module (initialize if necessary)
 
 You may specify either the full module path or just the module name, in which
 case swmod will look for the module in the directories specified by the
@@ -428,12 +427,27 @@ swmod_setinst() {
 	fi
 
 	if [ "${init_module}" = "yes" ] ; then
-		if ! \swmod_is_valid_prefix "${SWMOD_INST_PREFIX}" ; then
-			\swmod_adddeps none
-		fi
+		\echo "Note: The \"setmod setinst\" option \"-i\" is deprecated and has no function anymore." 1>&2
 	fi
 
 	if [ "${load_module}" = "yes" ] ; then
+		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+
+		if \test "${SWMOD_PREFIX}" = "" ; then
+			\swmod_adddeps none
+			\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+
+			if \test "${SWMOD_PREFIX}" = "" ; then
+				\echo "Error: \"swmod load\" cannot find the install target module \"${SWMOD_MODSPEC}\", check SWMOD_MODPATH variable." 1>&2
+				return 1
+			fi
+		fi
+
+		if \test "${SWMOD_PREFIX}" != "${SWMOD_INST_PREFIX}" ; then
+			\echo "Error: \"swmod load\" would load \"${SWMOD_PREFIX}\" instead of \"${SWMOD_INST_PREFIX}\", check SWMOD_INST_BASE and SWMOD_MODPATH variables." 1>&2
+			return 1
+		fi
+
 		\swmod_load "${SWMOD_MODSPEC}"
 	fi
 }
