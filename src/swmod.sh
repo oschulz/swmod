@@ -635,7 +635,7 @@ swmod_instpkg() {
 		return 1
 	fi
 
-	BUILDDIR=`\mktemp -t -d "$(whoami)-build-XXXXXX"`
+	BUILDDIR=`\mktemp -d -t "$(whoami)-build-XXXXXX"`
 	\echo "Build directory: \"${BUILDDIR}\""
 
 	rsync -rlpt "${PKGSRC}/" "${BUILDDIR}/"
