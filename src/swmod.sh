@@ -511,7 +511,7 @@ swmod_adddeps() {
 			return
 		else
 			\local newdep="yes";
-			if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
+			if [ -f "${SWMOD_INST_PREFIX}/swmod.deps" ] ; then
 				for d in `\cat "${SWMOD_INST_PREFIX}/swmod.deps"`; do
 					if \test "${d}" = "${dep}"; then
 						\local newdep="no"
