@@ -68,9 +68,9 @@ or
 
     # swmod load mysoftware@1.2.3
 
-if you are using versions and want to load a specific one. Otherwise swmod
-will try to guess which  version is the current one. For numerical versions,
-it is legal to specify only a part of the version number:
+if you want to load a specific one. Otherwise swmod will try to guess which
+version is the current one. For numerical versions, it is legal to specify
+only a part of the version number:
 
     # swmod load mysoftware@1.2
 
@@ -96,7 +96,7 @@ swmod compatible software module can be created simply by manually installing
 certain structure (see above). However, swmod also provides several tools
 to assist with the installation of software packages into a module.
 
-Fist, specify the installation target module, e.g.:
+Fist, specify the installation target module and it's version, e.g.:
 
     # swmod setinst mysoftware@1.2.3
 
@@ -104,10 +104,9 @@ This is the module (here, module "mysoftware", version "1.2.3"), into which
 you want to install your software. You can specify a new module, or add more
 software packages to an existing module.
 
-Module versions (like "1.2.3", "testing", "development", etc.) are optional,
-but very useful. By default, the module will be created under the path
-`$HOME/.local/sw/`. You can override the default installation base path with
-the environment variable `$SWMOD_INST_BASE`.
+By default, the module will be created under the path `$HOME/.local/sw/`. You
+can override the default installation base path with the environment variable
+`$SWMOD_INST_BASE`.
 
 To make things more comfortable, you can use `swmod setinst -l`, e.g.
 

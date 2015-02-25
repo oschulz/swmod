@@ -60,8 +60,7 @@ swmod_get_modversion() {
 	\local c=`\basename "$pp2"`
 
 	if [ "$a" = "$SWMOD_HOSTSPEC" ] ; then
-		\echo "${b}"
-		return
+		return 1
 	elif [ "$b" = "$SWMOD_HOSTSPEC" ] ; then
 		\echo "${c}@${a}"
 		return
@@ -99,68 +98,58 @@ swmod_is_loaded() {
 swmod_findversion_indir() {
 	# Arguments: module_dir module_version
 
-	# \echo "DEBUG: Searching for version \"$2\" in directory \"$1\"" 1>&2
-	if [ ! -d "${1}" ] ; then
+	\local BASE_DIR="$1"
+	\local SEARCH_VER="$2"
+
+	# \echo "DEBUG: Searching for version \"${SEARCH_VER}\" in directory \"${BASE_DIR}\"" 1>&2
+	if [ ! -d "${BASE_DIR}" ] ; then
 		\echo "Internal error: Directory does not exist." 1>&2; return
 	fi
 
-	if \test "${2}" = "" ; then # no version specified
-		# \echo "DEBUG: No version specified." 1>&2
-		if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}" ; then
-			# \echo "DEBUG: module seems to be unversioned." 1>&2
-			\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}"
-			\echo "${SWMOD_PREFIX}"
-			return
-		else
-			\local v
-			for v in default production prod; do
-				if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}/$v" ; then
-					\echo "Assuming module version \"$v\"" 1>&2
-					\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/$v"
-					\echo "${SWMOD_PREFIX}"
-					return
-				fi
-			done
-			if \test "${SWMOD_PREFIX}" = "" ; then
-				\local spcand
-				while \read spcand; do
-					\local v=`\basename "${spcand}"`
-					if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}/$v" ; then
-						\echo "Assuming module version \"$v\"" 1>&2
-						\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/$v"
-						\echo "${SWMOD_PREFIX}"
-						return
-					fi
-				done <<-@SUBST@
-					$( \ls "$1/${SWMOD_HOSTSPEC}" 2> /dev/null | sort -r -n )
-				@SUBST@
-			fi
-			if \test "${SWMOD_PREFIX}" = "" ; then
-				# \echo "DEBUG: No versions found for module." 1>&2
-				# \echo "DEBUG: Warning: Assuming module to be unversioned." 1>&2
-				\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}"
+	if \test "${SEARCH_VER}" = "" ; then # no version specified
+		\local v
+		for v in default production prod; do
+			\local CAND_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${v}"
+			if (test -d "${CAND_PREFIX}") && (\swmod_is_valid_prefix "${CAND_PREFIX}") ; then
+				\echo "Assuming module version \"${v}\"" 1>&2
+				\local SWMOD_PREFIX="${CAND_PREFIX}"
 				\echo "${SWMOD_PREFIX}"
 				return
 			fi
+		done
+		if \test "${SWMOD_PREFIX}" = "" ; then
+			\local spcand
+			while \read spcand; do
+				\local v=`\basename "${spcand}"`
+				\local CAND_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${v}"
+				if \swmod_is_valid_prefix "${CAND_PREFIX}" ; then
+					\echo "Assuming module version \"${v}\"" 1>&2
+					\local SWMOD_PREFIX="${CAND_PREFIX}"
+					\echo "${SWMOD_PREFIX}"
+					return
+				fi
+			done <<-@SUBST@
+				$( \ls "${BASE_DIR}/${SWMOD_HOSTSPEC}" 2> /dev/null | sort -r -n )
+			@SUBST@
 		fi
 	else
-		\local SWMOD_SPECVER="$2"
+		\local SWMOD_SPECVER="${SEARCH_VER}"
 		# \echo "DEBUG: looking for module version \"${SWMOD_SPECVER}\"" 1>&2
-		if \test -d "$1/${SWMOD_HOSTSPEC}/$2" ; then
+		if \test -d "${BASE_DIR}/${SWMOD_HOSTSPEC}/${SEARCH_VER}" ; then
 			# \echo "DEBUG: Exact match." 1>&2
-			\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/${SWMOD_SPECVER}"
+			\local SWMOD_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${SWMOD_SPECVER}"
 			\echo "${SWMOD_PREFIX}"
 			return
 		else
 			while \read spcand; do
 				\local v=`\basename "${spcand}"`
-				if \swmod_version_match "$v" "$SWMOD_SPECVER" ; then
-					\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/${v}"
+				if \swmod_version_match "${v}" "$SWMOD_SPECVER" ; then
+					\local SWMOD_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${v}"
 					\echo "${SWMOD_PREFIX}"
 					return
 				fi
 			done <<-@SUBST@
-				$( \ls "$1/${SWMOD_HOSTSPEC}" 2> /dev/null |sort -r -n )
+				$( \ls "${BASE_DIR}/${SWMOD_HOSTSPEC}" 2> /dev/null |sort -r -n )
 			@SUBST@
 		fi
 	fi
@@ -331,7 +320,11 @@ swmod_load() {
 
 	## Detect prefix ##
 
-	\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+	if swmod_is_valid_prefix "${SWMOD_MODSPEC}" ; then
+		\local SWMOD_PREFIX="${SWMOD_MODSPEC}"
+	else
+		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+	fi
 
 	if \test "${SWMOD_PREFIX}" = "" ; then
 		\echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
@@ -452,7 +445,7 @@ swmod_load() {
 
 
 swmod_setinst_usage() {
-echo >&2 "Usage: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
+echo >&2 "Usage: swmod setinst [BASE_PATH/]MODULE_NAME@MODULE_VERSION"
 cat >&2 <<EOF
 
 Set target module for software package installation.
@@ -487,6 +480,11 @@ swmod_setinst() {
 	\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
 
 	if \test "${SWMOD_MODULE}" = "" ; then \swmod_setinst_usage; return 1;	fi
+
+	if \test -z "$SWMOD_MODVER" ; then
+		\echo "Error: Target module version must be specified." 1>&2; return
+		return 1
+	fi
 	
 	if \test x"${SWMOD_MODULE}" != x`\basename "${SWMOD_MODULE}"` ; then
 	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
