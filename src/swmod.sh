@@ -384,18 +384,15 @@ swmod_load() {
 		\local LIBDIR="${SWMOD_PREFIX}/lib"
 	fi
 
-	if \test "`\echo ${SWMOD_HOSTSPEC} | \cut -d '-' -f 1`" = "osx" ; then
-		if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
-			\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
-		else
-			\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
-		fi
+	if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
+		\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
 	else
-		if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
-			\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
-		else
-			\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
-		fi
+		\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+	fi
+	if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
+		\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
+	else
+		\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
 	fi
 
 	if \test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
