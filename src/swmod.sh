@@ -296,17 +296,24 @@ swmod_hostspec() {
 
 # == load subcommand ==================================================
 
+swmod_load_usage() {
+echo >&2 "Usage: swmod load MODULE[@VERSION]"
+cat >&2 <<EOF
+
+You may specify either the full module path or just the module name, in which
+case swmod will look for the module in the directories specified by the
+SWMOD_MODPATH environment variable
+EOF
+} # swmod_load_usage()
+
+
 swmod_load() {
 	## Parse arguments ##
 
 	\local SWMOD_MODSPEC=$1
 
 	if \test "${SWMOD_MODSPEC}" = "" ; then
-		\echo "Syntax: swmod load MODULE[@VERSION]"
-		\echo
-		\echo "You may specify either the full module path or just the" \
-			 "module name, in which case swmod will look for the module in" \
-			 "the directories specified by the SWMOD_MODPATH environment variable"
+		\swmod_load_usage
 		return 1
 	fi
 
@@ -433,7 +440,7 @@ swmod_load() {
 # == setinst subcommand ==================================================
 
 
-usage_setinst() {
+swmod_setinst_usage() {
 echo >&2 "Usage: swmod setinst [BASE_PATH/]MODULE_NAME[@MODULE_VERSION]"
 cat >&2 <<EOF
 
@@ -447,7 +454,7 @@ You may specify either the full module path or just the module name, in which
 case swmod will look for the module in the directories specified by the
 SWMOD_MODPATH environment variable.
 EOF
-} # usage_setinst()
+} # swmod_setinst_usage()
 
 
 swmod_setinst() {
@@ -457,7 +464,7 @@ swmod_setinst() {
 	while getopts ?il opt
 	do
 		case "$opt" in
-			\?)	usage_setinst; return 1 ;;
+			\?)	\swmod_setinst_usage; return 1 ;;
 			i) local init_module="yes" ;;
 			l) local load_module="yes" ;;
 		esac
@@ -468,7 +475,7 @@ swmod_setinst() {
 	\local SWMOD_MODULE=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 1`
 	\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
 
-	if \test "${SWMOD_MODULE}" = "" ; then usage_setinst; return 1;	fi
+	if \test "${SWMOD_MODULE}" = "" ; then \swmod_setinst_usage; return 1;	fi
 	
 	if \test x"${SWMOD_MODULE}" != x`\basename "${SWMOD_MODULE}"` ; then
 	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
@@ -522,7 +529,7 @@ swmod_setinst() {
 
 # == adddeps subcommand =============================================
 
-usage_setinst() {
+swmod_adddeps_usage() {
 echo >&2 "Usage: swmod adddeps MODULE[@VERSION] ..."
 cat >&2 <<EOF
 
@@ -537,7 +544,7 @@ target (set by "swmod setinst").
 
 Use "swmod adddeps none" to create an empty swmod.deps file.
 EOF
-} # usage_adddeps()
+} # swmod_adddeps_usage()
 
 
 swmod_adddeps() {
@@ -547,7 +554,7 @@ swmod_adddeps() {
 	while getopts ?il opt
 	do
 		case "$opt" in
-			\?)	usage_setinst; return 1 ;;
+			\?)	\swmod_adddeps_usage; return 1 ;;
 			l) local load_deps="yes" ;;
 		esac
 	done
@@ -559,11 +566,7 @@ swmod_adddeps() {
 	fi
 
 	if \test "${1}" = "" ; then
-		\echo "Syntax: swmod adddeps MODULE[@VERSION] ..."
-		\echo
-		\echo "This adds the specified modules as dependencies to the" \
-		      "current swmod install target (set by \"swmod setinst\")." \
-		      "Use \"swmod adddeps none\" to create an empty swmod.deps file."
+		\swmod_adddeps_usage
 		return 1
 	fi
 	
