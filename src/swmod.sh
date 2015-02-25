@@ -464,13 +464,13 @@ EOF
 swmod_setinst() {
 	## Parse arguments ##
 
-	local OPTIND=1
+	\local OPTIND=1
 	while getopts ?il opt
 	do
 		case "$opt" in
 			\?)	\swmod_setinst_usage; return 1 ;;
-			i) local init_module="yes" ;;
-			l) local load_module="yes" ;;
+			i) \local init_module="yes" ;;
+			l) \local load_module="yes" ;;
 		esac
 	done
 	\shift `expr $OPTIND - 1`
@@ -559,12 +559,12 @@ EOF
 swmod_add_deps() {
 	## Parse arguments ##
 
-	local OPTIND=1
+	\local OPTIND=1
 	while getopts ?il opt
 	do
 		case "$opt" in
 			\?)	\swmod_add_deps_usage; return 1 ;;
-			l) local load_deps="yes" ;;
+			l) \local load_deps="yes" ;;
 		esac
 	done
 	\shift `expr $OPTIND - 1`
