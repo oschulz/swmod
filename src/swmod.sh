@@ -760,9 +760,12 @@ SWMOD_COMMAND="$1"
 \shift 1
 
 if \test "${SWMOD_COMMAND}" = "" ; then
-\echo >&2 "Usage: ${0} COMMAND OPTIONS"
+\echo >&2 "Usage: swmod COMMAND OPTIONS"
 \cat >&2 <<EOF
-Software module handling
+
+swmod is a simple software module management tool.
+
+Note: "swmod" is a shell alias. In scripts, use ". swmod.sh", instead.
 
 COMMANDS
 --------
@@ -778,28 +781,43 @@ COMMANDS
 
   adddeps             Add dependencies to the current install target.
 
-  configure           Run a configure script with suitable options to install a
-                      software package into a module. You may specify the full
-                      path of the script instead of "configure", e.g.
+  configure           Run a configure script with suitable options to install
+                      a software package into a module. You may specify the
+                      full path of the script instead of "configure", e.g.
                       "./configure" or "some-path/configure". If a \local
-                      configure file ("configure" or "./configure") is specified
-                      but doesn't exist, swmod will try to generate it by
-                      running "autogen.sh" (if present) or autoreconf.
+                      configure file ("configure" or "./configure") is
+                      specified but doesn't exist, swmod will try to generate
+                      it by running "autogen.sh" (if present) or autoreconf.
 
-  install             Run all necessary steps to build and install the software
-                      package in the current directory. Arguments are passed on
-                      to "configure".
+  install             Run all necessary steps to build and install the
+                      software package in the current directory. Arguments are
+                      passed on to "configure".
 
-  instpkg             Similar to install, but installs a software package from a
-                      given location and performs the build in $TMPDIR.
+  instpkg             Similar to install, but installs a software package from
+                      a given location and performs the build in $TMPDIR.
 
 ENVIRONMENT VARIABLES
 ---------------------
 
-  SWMOD_HOSTSPEC      The host specification string, describing the system / OS
-                      type, e.g. "linux-ubuntu-12.04-x86_64". If not set, swmod
-                      will generate a host specification string and set
+  SWMOD_HOSTSPEC      The host specification string, describing the system and
+                      OS type, e.g. "linux-ubuntu-12.04-x86_64". If not set,
+                      swmod will generate a host specification string and set
                       SWMOD_HOSTSPEC accordingly.
+
+  SWMOD_MODPATH       Module search path. Colon-separated list of directories,
+                      searched by "swmod load" and similar.
+
+  SWMOD_INST_BASE     Base directory for new modules. "swmod setinst" will
+                      create new modules here.
+
+  SWMOD_INST_PREFIX   Current install target module prefix (set by
+                      "swmod setinst").
+
+  SWMOD_INST_MODULE   Current install target module name (set by
+                      "swmod setinst").
+
+  SWMOD_INST_VERSION  Current install target module version (set by
+                      "swmod setinst").
 EOF
 return 1
 fi
