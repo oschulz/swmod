@@ -44,7 +44,8 @@ module.
 
 The output of the `hostspec` command (part of swmod) is a system specific
 string, e.g. "linux-ubuntu-12.04-x86_64", to support heterogeneous computing
-environments. You can override it with the environment variable `$HOSTSPEC`.
+environments. You can override it with the environment variable
+`$SWMOD_HOSTSPEC`.
 
 swmod looks for modules in all directories listed in the (colon-separated)
 path `$SWMOD_MODPATH`. `$SWMOD_MODPATH` defaults to `$HOME/.local/sw/`.

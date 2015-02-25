@@ -56,10 +56,10 @@ swmod_get_modversion() {
 	\local b=`\basename "$pp1"`
 	\local c=`\basename "$pp2"`
 
-	if [ "$a" = "$HOSTSPEC" ] ; then
+	if [ "$a" = "$SWMOD_HOSTSPEC" ] ; then
 		\echo "${b}"
 		return
-	elif [ "$b" = "$HOSTSPEC" ] ; then
+	elif [ "$b" = "$SWMOD_HOSTSPEC" ] ; then
 		\echo "${c}@${a}"
 		return
 	else
@@ -103,17 +103,17 @@ swmod_findversion_indir() {
 
 	if \test "${2}" = "" ; then # no version specified
 		# \echo "DEBUG: No version specified." 1>&2
-		if \swmod_is_valid_prefix "$1/${HOSTSPEC}" ; then
+		if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}" ; then
 			# \echo "DEBUG: module seems to be unversioned." 1>&2
-			\local SWMOD_PREFIX="$1/${HOSTSPEC}"
+			\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}"
 			\echo "${SWMOD_PREFIX}"
 			return
 		else
 			\local v
 			for v in default production prod; do
-				if \swmod_is_valid_prefix "$1/${HOSTSPEC}/$v" ; then
+				if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}/$v" ; then
 					\echo "Assuming module version \"$v\"" 1>&2
-					\local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
+					\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/$v"
 					\echo "${SWMOD_PREFIX}"
 					return
 				fi
@@ -122,20 +122,20 @@ swmod_findversion_indir() {
 				\local spcand
 				while \read spcand; do
 					\local v=`\basename "${spcand}"`
-					if \swmod_is_valid_prefix "$1/${HOSTSPEC}/$v" ; then
+					if \swmod_is_valid_prefix "$1/${SWMOD_HOSTSPEC}/$v" ; then
 						\echo "Assuming module version \"$v\"" 1>&2
-						\local SWMOD_PREFIX="$1/${HOSTSPEC}/$v"
+						\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/$v"
 						\echo "${SWMOD_PREFIX}"
 						return
 					fi
 				done <<-@SUBST@
-					$( \ls "$1/${HOSTSPEC}" 2> /dev/null | sort -r -n )
+					$( \ls "$1/${SWMOD_HOSTSPEC}" 2> /dev/null | sort -r -n )
 				@SUBST@
 			fi
 			if \test "${SWMOD_PREFIX}" = "" ; then
 				# \echo "DEBUG: No versions found for module." 1>&2
 				# \echo "DEBUG: Warning: Assuming module to be unversioned." 1>&2
-				\local SWMOD_PREFIX="$1/${HOSTSPEC}"
+				\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}"
 				\echo "${SWMOD_PREFIX}"
 				return
 			fi
@@ -143,21 +143,21 @@ swmod_findversion_indir() {
 	else
 		\local SWMOD_SPECVER="$2"
 		# \echo "DEBUG: looking for module version \"${SWMOD_SPECVER}\"" 1>&2
-		if \test -d "$1/${HOSTSPEC}/$2" ; then
+		if \test -d "$1/${SWMOD_HOSTSPEC}/$2" ; then
 			# \echo "DEBUG: Exact match." 1>&2
-			\local SWMOD_PREFIX="$1/${HOSTSPEC}/${SWMOD_SPECVER}"
+			\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/${SWMOD_SPECVER}"
 			\echo "${SWMOD_PREFIX}"
 			return
 		else
 			while \read spcand; do
 				\local v=`\basename "${spcand}"`
 				if \swmod_version_match "$v" "$SWMOD_SPECVER" ; then
-					\local SWMOD_PREFIX="$1/${HOSTSPEC}/${v}"
+					\local SWMOD_PREFIX="$1/${SWMOD_HOSTSPEC}/${v}"
 					\echo "${SWMOD_PREFIX}"
 					return
 				fi
 			done <<-@SUBST@
-				$( \ls "$1/${HOSTSPEC}" 2> /dev/null |sort -r -n )
+				$( \ls "$1/${SWMOD_HOSTSPEC}" 2> /dev/null |sort -r -n )
 			@SUBST@
 		fi
 	fi
@@ -216,8 +216,80 @@ swmod_init() {
 
 # == hostspec subcommand ==============================================
 
+# Generates a generic host-type specification string
+#
+# Examples:
+# linux-debian-4.0-x86_64
+# linux-ubuntu-8.04-i686
+# linux-slc-4.6-x86_64
+# linux-suse-10.0-i686
+# sunos-5.8-sun4u
+
+
 swmod_hostspec() {
-	\echo "${HOSTSPEC}"
+	if [ "${SWMOD_HOSTSPEC}" != "" ] ; then
+		\echo "${SWMOD_HOSTSPEC}"
+		return 0
+	elif [ -f /etc/hostspec ] ; then
+		\cat /etc/hostspec | \grep -v '^#' | \grep -o '[^[:space:]]\+' | \head -n 1
+		return 0;
+	fi
+
+	\local UNAME_KERNEL=`\uname -s`
+
+	if [ "${UNAME_KERNEL}" = 'Linux' ] ; then
+		\local OS="linux"
+
+		\local DIST=`\lsb_release -s -i`
+		if [ "${DIST}" = "Debian" ] ; then
+			\local DIST='debian'
+		elif [ "${DIST}" = "Ubuntu" ] ; then
+			\local DIST='ubuntu'
+		elif [ "${DIST}" = "SUSE LINUX" ] ; then
+			\local DIST='suse'
+		elif [ "${DIST}" = "Gentoo" ] ; then
+			\local DIST='gentoo'
+		elif [ "${DIST}" = "FedoraCore" ] ; then
+			\local DIST='fedora'
+		elif [ "${DIST}" = "RedHatEnterpriseAS" ] ; then
+			\local DIST='rhel'
+		elif [ "${DIST}" = "RedHatEnterpriseES" ] ; then
+			\local DIST='rhel'
+		elif [ "${DIST}" = "RedHatEnterpriseWS" ] ; then
+			\local DIST='rhel'
+		elif [ "${DIST}" = "CentOS" ] ; then
+			\local DIST='centos'
+		elif [ "${DIST}" = "Scientific Linux" ] ; then
+			\local DIST='scientific'
+		elif [ "${DIST}" = "ScientificSL" ] ; then
+			\local DIST='scientific'
+		elif [ "${DIST}" = "Scientific Linux CERN" ] ; then
+			\local DIST='slc'
+		elif [ "${DIST}" = "ScientificCERNSLC" ] ; then
+			\local DIST='slc'
+		fi
+
+		# Remove non-alnum chars from DIST and convert to lowercase:
+		\local DIST=`\echo "${DIST}" | \sed 's/[^[:alnum:]]//g' | \tr "[:upper:]" "[:lower:]"`
+
+		\local REL=`\lsb_release -s -r`
+		\local CPU=`\uname -m`
+
+		\echo "${OS}-${DIST}-${REL}-${CPU}"
+	elif [ "${UNAME_KERNEL}" = 'SunOS' ] ; then
+		\local OS="sunos"
+		\local REL=`\uname -r`
+		\local CPU=`\uname -m`
+		\echo "${OS}-${REL}-${CPU}"
+	elif [ "${UNAME_KERNEL}" = 'Darwin' ] ; then
+		\local OS="osx"
+		\local REL=`\sw_vers -productVersion`
+		\local CPU=`\uname -m`
+		\echo "${OS}-${REL}-${CPU}"
+	else
+		\echo unknown
+		return 1
+	fi
 }
 
 
@@ -301,7 +373,7 @@ swmod_load() {
 		\local LIBDIR="${SWMOD_PREFIX}/lib"
 	fi
 
-	if \test "`\echo ${HOSTSPEC} | \cut -d '-' -f 1`" = "osx" ; then
+	if \test "`\echo ${SWMOD_HOSTSPEC} | \cut -d '-' -f 1`" = "osx" ; then
 		if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
 			\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
 		else
@@ -411,7 +483,7 @@ swmod_setinst() {
 	\export SWMOD_INST_VERSION="${SWMOD_MODVER}"
 
 	if \test "${SWMOD_INST_MODULE}" != "" ; then
-		\export SWMOD_INST_PREFIX="${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}/${HOSTSPEC}"
+		\export SWMOD_INST_PREFIX="${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}/${SWMOD_HOSTSPEC}"
 		if \test "${SWMOD_INST_VERSION}" != "" ; then
 			\export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
 		fi
@@ -660,11 +732,16 @@ if ! (\ps $$ | \grep -q 'sh\|bash') ; then
 fi
 
 
-# Check HOSTSPEC
+# Check SWMOD_HOSTSPEC
 
-if \test "${HOSTSPEC}" = "" ; then
-	\export HOSTSPEC="`\hostspec`"
-	if \test "${HOSTSPEC}" = "" ; then
+# For backward compatibility:
+if \test -z "${SWMOD_HOSTSPEC}" -a -n "${HOSTSPEC}" ; then
+	export SWMOD_HOSTSPEC="${HOSTSPEC}"
+fi
+
+if \test -z "${SWMOD_HOSTSPEC}"; then
+	\export SWMOD_HOSTSPEC="`\swmod_hostspec`"
+	if \test "${SWMOD_HOSTSPEC}" = "" ; then
 		\echo "Error: Could not determine host specification." 1>&2
 		return 1
 	fi
@@ -692,7 +769,8 @@ COMMANDS
 
   init                Set aliases, variables and create directories.
 
-  hostspec            Show value of HOSTSPEC variable
+  hostspec            Show host specification string (value of SWMOD_HOSTSPEC
+                      variable, automatically sets it if empty).
 
   load                Load a module.
 
@@ -718,12 +796,10 @@ COMMANDS
 ENVIRONMENT VARIABLES
 ---------------------
 
-  HOSTSPEC            The host specification string, describing the system / OS
-                      type, e.g. "linux-ubuntu-12.04-x86_64". swmod always
-                      checks this variable. If not set, it will try to get the
-                      host specification from running the command "hostspec",
-                      and then set it accordingly. If HOSTSPEC cannot be
-                      determined, swmod will fail.
+  SWMOD_HOSTSPEC      The host specification string, describing the system / OS
+                      type, e.g. "linux-ubuntu-12.04-x86_64". If not set, swmod
+                      will generate a host specification string and set
+                      SWMOD_HOSTSPEC accordingly.
 EOF
 return 1
 fi
