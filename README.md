@@ -121,9 +121,9 @@ as a shortcut for the frequently used combination
 The software package(s) you want to install into your module ("mysoftware", in
 this example) may depend on other software to build and to run. You can
 permanently add dependencies on other modules to the target module using
-`swmod adddeps`:
+`swmod add-deps`:
 
-    # swmod adddeps some_dep@1.0.1 some_other_dep@1.2.0
+    # swmod add-deps some_dep@1.0.1 some_other_dep@1.2.0
 
 This way, the correct versions  of your dependencies will be automatically
 loaded when you load your module:
@@ -132,7 +132,7 @@ loaded when you load your module:
 
 Use the `-l` option to immediately load the added dependencies, e.g.
 
-    # swmod adddeps -l some_dep@1.0.1 some_other_dep@1.2.0
+    # swmod add-deps -l some_dep@1.0.1 some_other_dep@1.2.0
 
 This comes in handy when adding dependencies to an already loaded module.
 

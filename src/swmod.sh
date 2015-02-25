@@ -508,7 +508,7 @@ swmod_setinst() {
 		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
 
 		if \test "${SWMOD_PREFIX}" = "" ; then
-			\swmod_adddeps none
+			\swmod_add_deps none
 			\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
 
 			if \test "${SWMOD_PREFIX}" = "" ; then
@@ -527,10 +527,10 @@ swmod_setinst() {
 }
 
 
-# == adddeps subcommand =============================================
+# == add-deps subcommand ============================================
 
-swmod_adddeps_usage() {
-echo >&2 "Usage: swmod adddeps MODULE[@VERSION] ..."
+swmod_add_deps_usage() {
+echo >&2 "Usage: swmod add-deps MODULE[@VERSION] ..."
 cat >&2 <<EOF
 
 Add dependencies to current target module.
@@ -542,19 +542,19 @@ Options:
 This adds the specified modules as dependencies to the current swmod install
 target (set by "swmod setinst").
 
-Use "swmod adddeps none" to create an empty swmod.deps file.
+Use "swmod add-deps none" to create an empty swmod.deps file.
 EOF
-} # swmod_adddeps_usage()
+} # swmod_add_deps_usage()
 
 
-swmod_adddeps() {
+swmod_add_deps() {
 	## Parse arguments ##
 
 	local OPTIND=1
 	while getopts ?il opt
 	do
 		case "$opt" in
-			\?)	\swmod_adddeps_usage; return 1 ;;
+			\?)	\swmod_add_deps_usage; return 1 ;;
 			l) local load_deps="yes" ;;
 		esac
 	done
@@ -566,7 +566,7 @@ swmod_adddeps() {
 	fi
 
 	if \test "${1}" = "" ; then
-		\swmod_adddeps_usage
+		\swmod_add_deps_usage
 		return 1
 	fi
 	
@@ -601,6 +601,18 @@ swmod_adddeps() {
 			fi
 		fi
 	done
+}
+
+
+# For backwards-compatibility:
+
+swmod_adddeps() {
+\cat >&2 <<EOF
+WARNING: "swmod adddeps" is deprecated and may be removed in a future version
+of swmod. Use "swmod add-deps" instead.
+EOF
+
+	\swmod_add_deps "$@"
 }
 
 
@@ -782,7 +794,7 @@ COMMANDS
 
   setinst             Set target module for software package installation.
 
-  adddeps             Add dependencies to the current install target.
+  add-deps            Add dependencies to current install target module.
 
   configure           Run a configure script with suitable options to install
                       a software package into a module. You may specify the
@@ -829,6 +841,7 @@ if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
 elif \test "${SWMOD_COMMAND}" = "setinst" ; then \swmod_setinst "$@"
+elif \test "${SWMOD_COMMAND}" = "add-deps" ; then \swmod_add_deps "$@"
 elif \test "${SWMOD_COMMAND}" = "adddeps" ; then \swmod_adddeps "$@"
 elif \test x`\basename "${SWMOD_COMMAND}"` = x"configure" ; then \swmod_configure "${SWMOD_COMMAND}" "$@"
 elif \test "${SWMOD_COMMAND}" = "install" ; then \swmod_install "$@"
