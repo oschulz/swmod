@@ -577,12 +577,12 @@ swmod_add_deps() {
 	done
 	\shift `expr $OPTIND - 1`
 
-	\swmod_require_inst_prefix || return 1
-
 	if \test "${1}" = "" ; then
 		\swmod_add_deps_usage
 		return 1
 	fi
+
+	\swmod_require_inst_prefix || return 1
 	
 	\mkdir -p "${SWMOD_INST_PREFIX}"
 
