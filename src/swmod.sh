@@ -77,7 +77,7 @@ swmod_is_loaded() {
 	# inherit special environment variables like LD_LIBRARY_PATH, but do
 	# inhert others like SWMOD_LOADED_PREFIXES. In such an inconsitent state,
 	# clear SWMOD_LOADED_PREFIXES:
-	if [ -z "${LD_LIBRARY_PATH}" ] ; then
+	if [ -z "${LD_LIBRARY_PATH}" -o -z "${DYLD_LIBRARY_PATH}" ] ; then
 		\unset SWMOD_LOADED_PREFIXES
 	fi
 
