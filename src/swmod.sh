@@ -21,6 +21,9 @@ swmod_is_valid_prefix() {
 	# Arguments: prefix
 
 	\local DIR="$1"
+
+	(swmod_get_modversion "${DIR}" &>/dev/null) && return
+
 	\test '(' -d "${DIR}/bin" ')' \
 		-o '(' -d "${DIR}/lib" ')' -o '(' -d "${DIR}/lib64" ')' \
 		-o '(' -d "${DIR}/include" ')' \
