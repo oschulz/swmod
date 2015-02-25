@@ -546,7 +546,11 @@ Add dependencies to current target module.
 
 Options:
   -?                Show help
+
   -l                Load added dependencies immediately in current session
+
+  -k                Do not convert prefix paths into module name and version
+                    automatically
 
 This adds the specified modules as dependencies to the current swmod install
 target (set by "swmod setinst").
@@ -559,12 +563,16 @@ EOF
 swmod_add_deps() {
 	## Parse arguments ##
 
+	\local load_deps="no"
+	\local keep_prefixes="no"
+
 	\local OPTIND=1
-	while getopts ?il opt
+	while getopts ?ilk opt
 	do
 		case "$opt" in
 			\?)	\swmod_add_deps_usage; return 1 ;;
 			l) \local load_deps="yes" ;;
+			k) \local keep_prefixes="yes" ;;
 		esac
 	done
 	\shift `expr $OPTIND - 1`
@@ -586,6 +594,12 @@ swmod_add_deps() {
 			fi
 			return
 		else
+			if ( (\swmod_is_valid_prefix "${dep}") && (\test "${keep_prefixes}" != "yes") ) ; then
+				if \local mod_name_ver=`\swmod_get_modversion "${dep}"` ; then
+					\local dep="${mod_name_ver}"
+				fi
+			fi
+
 			\local newdep="yes";
 			if [ -f "${SWMOD_INST_PREFIX}/swmod.deps" ] ; then
 				for d in `\cat "${SWMOD_INST_PREFIX}/swmod.deps"`; do
