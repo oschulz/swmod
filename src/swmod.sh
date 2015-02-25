@@ -204,6 +204,14 @@ swmod_getprefix() {
 }
 
 
+swmod_require_inst_prefix() {
+	if \test "x${SWMOD_INST_PREFIX}" = "x" ; then
+		\echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
+		return 1
+	fi
+}
+
+
 # == init subcommand ==================================================
 
 swmod_init() {
@@ -560,10 +568,7 @@ swmod_add_deps() {
 	done
 	\shift `expr $OPTIND - 1`
 
-	if \test "x${SWMOD_INST_PREFIX}" = "x" ; then
-		\echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
-		return 1
-	fi
+	\swmod_require_inst_prefix || return 1
 
 	if \test "${1}" = "" ; then
 		\swmod_add_deps_usage
@@ -616,13 +621,23 @@ EOF
 }
 
 
+# == get-deps subcommand ============================================
+
+swmod_get_deps() {
+	\swmod_require_inst_prefix || return 1
+
+	if [ -f "${SWMOD_INST_PREFIX}/swmod.deps" ] ; then
+		for d in `\cat "${SWMOD_INST_PREFIX}/swmod.deps"`; do
+			\echo "${d}"
+		done
+	fi
+}
+
+
 # == configure subcommand =============================================
 
 swmod_configure() {
-	if \test "x${SWMOD_INST_PREFIX}" = "x" ; then
-		\echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
-		return 1
-	fi
+	\swmod_require_inst_prefix || return 1
 
 	\local CONFIGURE="$1"
 	\shift 1
@@ -796,6 +811,8 @@ COMMANDS
 
   add-deps            Add dependencies to current install target module.
 
+  get-deps            List dependencies of current install target module.
+
   configure           Run a configure script with suitable options to install
                       a software package into a module. You may specify the
                       full path of the script instead of "configure", e.g.
@@ -843,6 +860,7 @@ elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
 elif \test "${SWMOD_COMMAND}" = "setinst" ; then \swmod_setinst "$@"
 elif \test "${SWMOD_COMMAND}" = "add-deps" ; then \swmod_add_deps "$@"
 elif \test "${SWMOD_COMMAND}" = "adddeps" ; then \swmod_adddeps "$@"
+elif \test "${SWMOD_COMMAND}" = "get-deps" ; then \swmod_get_deps "$@"
 elif \test x`\basename "${SWMOD_COMMAND}"` = x"configure" ; then \swmod_configure "${SWMOD_COMMAND}" "$@"
 elif \test "${SWMOD_COMMAND}" = "install" ; then \swmod_install "$@"
 elif \test "${SWMOD_COMMAND}" = "instpkg" ; then \swmod_instpkg "$@"
