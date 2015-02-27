@@ -448,6 +448,87 @@ swmod_load() {
 }
 
 
+# == list subcommand ================================================
+
+swmod_list_usage() {
+echo >&2 "Usage: swmod list [MODULE]"
+cat >&2 <<EOF
+
+List loaded modules.
+
+If MODULE is given, will only list the loaded version(s) of this module,
+and fail if the module is not loaded. MODULE may be a module name (optionally
+with a version) or a prefix path.
+
+Options:
+  -?                Show help.
+
+  -p                Print prefix paths instead of determining module names and
+                    versions.
+
+  -q                Quiet mode, suppress output. Only makes sense when
+                    MODULE is given.
+EOF
+} # swmod_list_usage()
+
+
+swmod_list() {
+	## Parse arguments ##
+
+	\local print_prefix="no"
+	\local quiet_mode="no"
+
+	\local OPTIND=1
+	while getopts ?ipq opt
+	do
+		case "$opt" in
+			\?)	\swmod_list_usage; return 1 ;;
+			p) \local print_prefix="yes" ;;
+			q) \local quiet_mode="yes" ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
+
+	\local name_or_prefix="${1}"
+	\local module_found="no"
+
+	if \test -n "${name_or_prefix}" ; then
+		if (\echo "${name_or_prefix}" | \grep -q '/') ; then
+			\local module_prefix=`\echo "${name_or_prefix}" | sed 's|//\+|/|g; s|/$||'`
+		else
+			\local module_spec="${name_or_prefix}"
+			\local module_prefix=`\swmod_getprefix "${module_spec}"`
+			if \test -z "${module_prefix}" ; then
+				\echo "Error: Can't find module \"${module_spec}\"." 1>&2
+				return 1
+			fi
+		fi
+	fi
+
+	while \read -d ':' loadedPrefix; do
+		if \test -n "${loadedPrefix}" ; then
+			if \test -z "$module_prefix" -o "$module_prefix" = "$loadedPrefix" ; then
+				if \test "${quiet_mode}" != "yes" ; then
+					if \test "${print_prefix}" != "yes" ; then
+						\swmod_try_get_modversion "${loadedPrefix}"
+					else
+						\echo "${loadedPrefix}"
+					fi
+				fi
+
+				\test "$module_prefix" = "$loadedPrefix" && \local module_found="yes"
+			fi
+		fi
+	done <<-@SUBST@
+		$( \echo "${SWMOD_LOADED_PREFIXES}:" )
+	@SUBST@
+
+	if \test -n "${name_or_prefix}" -a "${module_found}" != "yes" ; then
+		\echo "Module \"${name_or_prefix}\" not loaded." 1>&2
+		return 1
+	fi
+}
+
 
 # == target subcommand ===================================================
 
@@ -857,6 +938,8 @@ COMMANDS
 
   load                Load a module.
 
+  list                List loaded modules
+
   target              Set target module for software package installation.
 
   add-deps            Add dependencies to current install target module.
@@ -907,6 +990,7 @@ fi
 if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
+elif \test "${SWMOD_COMMAND}" = "list" ; then \swmod_list "$@"
 elif \test "${SWMOD_COMMAND}" = "target" ; then \swmod_target "$@"
 elif \test "${SWMOD_COMMAND}" = "setinst" ; then \swmod_setinst "$@"
 elif \test "${SWMOD_COMMAND}" = "add-deps" ; then \swmod_add_deps "$@"
