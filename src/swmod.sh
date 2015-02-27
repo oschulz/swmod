@@ -305,6 +305,76 @@ swmod_hostspec() {
 
 
 
+# == avail subcommand ================================================
+
+swmod_avail_usage() {
+echo >&2 "Usage: swmod avail [NAME[@VERSION]]"
+cat >&2 <<EOF
+
+List all available modules.
+
+If a module name (optionally with partial or full version) is given, will only
+list modules with this name / version.
+
+Options:
+  -?                Show help.
+
+  -l                Show both module names and versions and prefix path
+EOF
+} # swmod_avail_usage()
+
+
+swmod_avail() {
+	## Parse arguments ##
+
+	\local extended_output="no"
+
+	\local OPTIND=1
+	while getopts ?l opt
+	do
+		case "$opt" in
+			\?)	\swmod_avail_usage; return 1 ;;
+			l) \local extended_output="yes" ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
+
+	\local mod_name_ver="${1}"
+	\local mod_name=`\echo "${mod_name_ver}@" | \cut -d '@' -f 1`
+	\local mod_ver=`\echo "${mod_name_ver}@" | \cut -d '@' -f 2`
+
+
+	(while \read -d ':' basedir; do
+		if [ -d "${basedir}" ]; then
+			\local spcand
+			while \read spcand; do
+				if \test -n "${spcand}" ; then
+					\local v=`\basename "${spcand}"`
+					if \swmod_is_valid_prefix "${spcand}" ; then
+						if ( \test -z "${mod_ver}" || \swmod_version_match "${v}" "${mod_ver}" ) ; then
+							\local mod_name_var=`\swmod_try_get_modversion "${spcand}"`
+							if \test "${extended_output}" = "yes" ; then
+								\echo "${mod_name_var}    \"${spcand}\""
+							else
+								\echo "${mod_name_var}"
+							fi
+						fi
+					fi
+				fi
+			done <<-@SUBST@
+				$(
+					\test -n "${mod_name}" \
+					&& (\ls -d "${basedir}/${mod_name}/${SWMOD_HOSTSPEC}"/* 2> /dev/null | sort -r -n) \
+					|| (\ls -d "${basedir}/"*"/${SWMOD_HOSTSPEC}"/* 2> /dev/null | sort -r -n)
+				)
+			@SUBST@
+		fi 
+	done | sort | uniq ) <<-@SUBST@
+		$( \echo "${SWMOD_MODPATH}:" )
+	@SUBST@
+}
+
+
 # == load subcommand ==================================================
 
 swmod_load_usage() {
@@ -936,6 +1006,8 @@ COMMANDS
   hostspec            Show host specification string (value of SWMOD_HOSTSPEC
                       variable, automatically sets it if empty).
 
+  avail               List available modules.
+
   load                Load a module.
 
   list                List loaded modules
@@ -989,6 +1061,7 @@ fi
 
 if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
+elif \test "${SWMOD_COMMAND}" = "avail" ; then \swmod_avail "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
 elif \test "${SWMOD_COMMAND}" = "list" ; then \swmod_list "$@"
 elif \test "${SWMOD_COMMAND}" = "target" ; then \swmod_target "$@"
