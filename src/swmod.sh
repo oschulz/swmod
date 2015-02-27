@@ -70,6 +70,17 @@ swmod_get_modversion() {
 }
 
 
+swmod_try_get_modversion() {
+	\local prefix="${1}"
+	if ( (\swmod_is_valid_prefix "${prefix}")) ; then
+		\local mod_name_ver=`\swmod_get_modversion "${prefix}" 2>/dev/null`
+		\test -n "${mod_name_ver}" && \echo "${mod_name_ver}" || \echo "${prefix}"
+	else
+		\echo "${prefix}"
+	fi
+}
+
+
 swmod_is_loaded() {
 	# Arguments: prefix
 
@@ -198,7 +209,7 @@ swmod_getprefix() {
 
 swmod_require_inst_prefix() {
 	if \test "x${SWMOD_INST_PREFIX}" = "x" ; then
-		\echo "ERROR: No install target module set (see \"swmod setinst\")." 1>&2
+		\echo "ERROR: No install target module set (see \"swmod target -?\")." 1>&2
 		return 1
 	fi
 }
@@ -438,98 +449,125 @@ swmod_load() {
 
 
 
-# == setinst subcommand ==================================================
+# == target subcommand ===================================================
 
 
-swmod_setinst_usage() {
-echo >&2 "Usage: swmod setinst [BASE_PATH/]MODULE_NAME@MODULE_VERSION"
+swmod_target_usage() {
+echo >&2 "Usage: swmod target [[BASE_PATH/]MODULE_NAME@MODULE_VERSION]"
 cat >&2 <<EOF
 
 Set target module for software package installation.
 
 Options:
   -?                Show help
+
   -l                Load target module (initialize if necessary)
+
+  -k                Print prefix path instead of module name and version
 
 You may specify either the full module path or just the module name, in which
 case swmod will look for the module in the directories specified by the
 SWMOD_MODPATH environment variable.
 EOF
-} # swmod_setinst_usage()
+} # swmod_target_usage()
 
 
-swmod_setinst() {
+swmod_target() {
 	## Parse arguments ##
 
+	\local load_module="no"
+	\local print_prefix="no"
+
 	\local OPTIND=1
-	while getopts ?il opt
+	while getopts ?ilp opt
 	do
 		case "$opt" in
-			\?)	\swmod_setinst_usage; return 1 ;;
+			\?)	\swmod_target_usage; return 1 ;;
 			i) \local init_module="yes" ;;
 			l) \local load_module="yes" ;;
+			p) \local print_prefix="yes" ;;
 		esac
 	done
 	\shift `expr $OPTIND - 1`
 
 	\local SWMOD_MODSPEC="${1}"
-	\local SWMOD_MODULE=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 1`
-	\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
-
-	if \test "${SWMOD_MODULE}" = "" ; then \swmod_setinst_usage; return 1;	fi
-
-	if \test -z "$SWMOD_MODVER" ; then
-		\echo "Error: Target module version must be specified." 1>&2; return
-		return 1
-	fi
 	
-	if \test x"${SWMOD_MODULE}" != x`\basename "${SWMOD_MODULE}"` ; then
-	    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
-		\export SWMOD_INST_BASE=`\dirname "${SWMOD_MODULE}"`
-		\local SWMOD_MODULE=`\basename "${SWMOD_MODULE}"`
-	fi
+	if \test -n "${SWMOD_MODSPEC}" ; then
+		\local SWMOD_MODULE=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 1`
+		\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
 
-	# For backwards compatibility (specification of version as second parameter)
-	if \test "${SWMOD_MODVER}" = "" ; then \local SWMOD_MODVER="$2"; fi
-
-	\export SWMOD_INST_MODULE="${SWMOD_MODULE}"
-	\export SWMOD_INST_VERSION="${SWMOD_MODVER}"
-
-	if \test "${SWMOD_INST_MODULE}" != "" ; then
-		\export SWMOD_INST_PREFIX="${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}/${SWMOD_HOSTSPEC}"
-		if \test "${SWMOD_INST_VERSION}" != "" ; then
-			\export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
-		fi
-		\echo "Set install prefix to \"${SWMOD_INST_PREFIX}\""
-		\true
-	else
-		\false
-	fi
-
-	if [ "${init_module}" = "yes" ] ; then
-		\echo "Note: The \"setmod setinst\" option \"-i\" is deprecated and has no function anymore." 1>&2
-	fi
-
-	if [ "${load_module}" = "yes" ] ; then
-		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
-
-		if \test "${SWMOD_PREFIX}" = "" ; then
-			\swmod_add_deps none
-			\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
-
-			if \test "${SWMOD_PREFIX}" = "" ; then
-				\echo "Error: \"swmod load\" cannot find the install target module \"${SWMOD_MODSPEC}\", check SWMOD_MODPATH variable." 1>&2
-				return 1
-			fi
-		fi
-
-		if \test "${SWMOD_PREFIX}" != "${SWMOD_INST_PREFIX}" ; then
-			\echo "Error: \"swmod load\" would load \"${SWMOD_PREFIX}\" instead of \"${SWMOD_INST_PREFIX}\", check SWMOD_INST_BASE and SWMOD_MODPATH variables." 1>&2
+		if \test -z "$SWMOD_MODVER" ; then
+			\echo "Error: Target module version must be specified." 1>&2; return
 			return 1
 		fi
 
-		\swmod_load "${SWMOD_MODSPEC}"
+		if \test x"${SWMOD_MODULE}" != x`\basename "${SWMOD_MODULE}"` ; then
+		    # If SWMOD_MODULE specified as absolute path, set new SWMOD_INST_BASE
+			\export SWMOD_INST_BASE=`\dirname "${SWMOD_MODULE}"`
+			\local SWMOD_MODULE=`\basename "${SWMOD_MODULE}"`
+		fi
+
+		# For backwards compatibility (specification of version as second parameter)
+		if \test "${SWMOD_MODVER}" = "" ; then \local SWMOD_MODVER="$2"; fi
+
+		\export SWMOD_INST_MODULE="${SWMOD_MODULE}"
+		\export SWMOD_INST_VERSION="${SWMOD_MODVER}"
+
+		if \test "${SWMOD_INST_MODULE}" != "" ; then
+			\export SWMOD_INST_PREFIX="${SWMOD_INST_BASE}/${SWMOD_INST_MODULE}/${SWMOD_HOSTSPEC}"
+			if \test "${SWMOD_INST_VERSION}" != "" ; then
+				\export SWMOD_INST_PREFIX="${SWMOD_INST_PREFIX}/${SWMOD_INST_VERSION}"
+			fi
+			\echo "Set install prefix to \"${SWMOD_INST_PREFIX}\"" >&2
+			\true
+		else
+			\false
+		fi
+
+		if [ "${init_module}" = "yes" ] ; then
+			\echo "Note: The \"setmod target\" option \"-i\" is deprecated and has no function anymore." 1>&2
+		fi
+
+		if [ "${load_module}" = "yes" ] ; then
+			\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+
+			if \test "${SWMOD_PREFIX}" = "" ; then
+				\swmod_add_deps none
+				\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+
+				if \test "${SWMOD_PREFIX}" = "" ; then
+					\echo "Error: \"swmod load\" cannot find the install target module \"${SWMOD_MODSPEC}\", check SWMOD_MODPATH variable." 1>&2
+					return 1
+				fi
+			fi
+
+			if \test "${SWMOD_PREFIX}" != "${SWMOD_INST_PREFIX}" ; then
+				\echo "Error: \"swmod load\" would load \"${SWMOD_PREFIX}\" instead of \"${SWMOD_INST_PREFIX}\", check SWMOD_INST_BASE and SWMOD_MODPATH variables." 1>&2
+				return 1
+			fi
+
+			\swmod_load "${SWMOD_MODSPEC}"
+		fi
+	else
+		if \test -n "${SWMOD_INST_PREFIX}" ; then
+			\test "${print_prefix}" != "yes" \
+			&&	\swmod_try_get_modversion "${SWMOD_INST_PREFIX}" \
+			|| \echo "${SWMOD_INST_PREFIX}"
+		else
+			\echo "ERROR: No install target module set (see \"swmod target -?\")." 1>&2
+			return 1
+		fi
 	fi
+}
+
+
+swmod_setinst() {
+\cat >&2 <<EOF
+WARNING: "swmod setinst" is deprecated and may be removed in a future version
+of swmod. Use "swmod target" instead.
+EOF
+
+	\swmod_target "$@"
 }
 
 
@@ -550,7 +588,7 @@ Options:
                     automatically
 
 This adds the specified modules as dependencies to the current swmod install
-target (set by "swmod setinst").
+target (set by "swmod target").
 
 Use "swmod add-deps none" to create an empty swmod.deps file.
 EOF
@@ -819,7 +857,7 @@ COMMANDS
 
   load                Load a module.
 
-  setinst             Set target module for software package installation.
+  target              Set target module for software package installation.
 
   add-deps            Add dependencies to current install target module.
 
@@ -851,17 +889,17 @@ ENVIRONMENT VARIABLES
   SWMOD_MODPATH       Module search path. Colon-separated list of directories,
                       searched by "swmod load" and similar.
 
-  SWMOD_INST_BASE     Base directory for new modules. "swmod setinst" will
+  SWMOD_INST_BASE     Base directory for new modules. "swmod target" will
                       create new modules here.
 
   SWMOD_INST_PREFIX   Current install target module prefix (set by
-                      "swmod setinst").
+                      "swmod target").
 
   SWMOD_INST_MODULE   Current install target module name (set by
-                      "swmod setinst").
+                      "swmod target").
 
   SWMOD_INST_VERSION  Current install target module version (set by
-                      "swmod setinst").
+                      "swmod target").
 EOF
 return 1
 fi
@@ -869,6 +907,7 @@ fi
 if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
+elif \test "${SWMOD_COMMAND}" = "target" ; then \swmod_target "$@"
 elif \test "${SWMOD_COMMAND}" = "setinst" ; then \swmod_setinst "$@"
 elif \test "${SWMOD_COMMAND}" = "add-deps" ; then \swmod_add_deps "$@"
 elif \test "${SWMOD_COMMAND}" = "adddeps" ; then \swmod_adddeps "$@"

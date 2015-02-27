@@ -98,7 +98,7 @@ to assist with the installation of software packages into a module.
 
 Fist, specify the installation target module and it's version, e.g.:
 
-    # swmod setinst mysoftware@1.2.3
+    # swmod target mysoftware@1.2.3
 
 This is the module (here, module "mysoftware", version "1.2.3"), into which
 you want to install your software. You can specify a new module, or add more
@@ -108,13 +108,13 @@ By default, the module will be created under the path `$HOME/.local/sw/`. You
 can override the default installation base path with the environment variable
 `$SWMOD_INST_BASE`.
 
-To make things more comfortable, you can use `swmod setinst -l`, e.g.
+To make things more comfortable, you can use `swmod target -l`, e.g.
 
-    # swmod setinst -l mysoftware@1.2.3
+    # swmod target -l mysoftware@1.2.3
 
 as a shortcut for the frequently used combination
 
-    # swmod setinst mysoftware@1.2.3
+    # swmod target mysoftware@1.2.3
     # swmod load mysoftware@1.2.3
 
 The software package(s) you want to install into your module ("mysoftware", in
@@ -168,7 +168,7 @@ for Autoconf/Automake out-of-tree builds.
 Currently, swmod only supports Autoconf out of the box. If the software
 package you are installing uses `scons`, `cmake` or another system, you will
 have to pass the installation target directory to the build system manually.
-`swmod setinst` exports an environment variable `SWMOD_INST_PREFIX` which you
+`swmod target` exports an environment variable `SWMOD_INST_PREFIX` which you
 can use for this purpose.
 
 
