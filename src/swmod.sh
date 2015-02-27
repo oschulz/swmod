@@ -121,7 +121,7 @@ swmod_findversion_indir() {
 		\local v
 		for v in default production prod; do
 			\local CAND_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${v}"
-			if (test -d "${CAND_PREFIX}") && (\swmod_is_valid_prefix "${CAND_PREFIX}") ; then
+			if (\test -d "${CAND_PREFIX}") && (\swmod_is_valid_prefix "${CAND_PREFIX}") ; then
 				\echo "Assuming module version \"${v}\"" 1>&2
 				\local SWMOD_PREFIX="${CAND_PREFIX}"
 				\echo "${SWMOD_PREFIX}"
@@ -309,7 +309,7 @@ swmod_hostspec() {
 # == avail subcommand ================================================
 
 swmod_avail_usage() {
-echo >&2 "Usage: swmod avail [NAME[@VERSION]]"
+\echo >&2 "Usage: swmod avail [NAME[@VERSION]]"
 cat >&2 <<EOF
 
 List all available modules.
@@ -379,7 +379,7 @@ swmod_avail() {
 # == load subcommand ==================================================
 
 swmod_load_usage() {
-echo >&2 "Usage: swmod load MODULE[@VERSION]"
+\echo >&2 "Usage: swmod load MODULE[@VERSION]"
 cat >&2 <<EOF
 
 You may specify either the full module path or just the module name, in which
@@ -522,7 +522,7 @@ swmod_load() {
 # == list subcommand ================================================
 
 swmod_list_usage() {
-echo >&2 "Usage: swmod list [MODULE]"
+\echo >&2 "Usage: swmod list [MODULE]"
 cat >&2 <<EOF
 
 List loaded modules.
@@ -605,7 +605,7 @@ swmod_list() {
 
 
 swmod_target_usage() {
-echo >&2 "Usage: swmod target [[BASE_PATH/]MODULE_NAME@MODULE_VERSION]"
+\echo >&2 "Usage: swmod target [[BASE_PATH/]MODULE_NAME@MODULE_VERSION]"
 cat >&2 <<EOF
 
 Set target module for software package installation.
@@ -726,7 +726,7 @@ EOF
 # == add-deps subcommand ============================================
 
 swmod_add_deps_usage() {
-echo >&2 "Usage: swmod add-deps MODULE[@VERSION] ..."
+\echo >&2 "Usage: swmod add-deps MODULE[@VERSION] ..."
 cat >&2 <<EOF
 
 Add dependencies to current target module.
