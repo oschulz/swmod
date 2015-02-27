@@ -782,7 +782,8 @@ swmod_add_deps() {
 			return
 		else
 			if ( (\swmod_is_valid_prefix "${dep}") && (\test "${keep_prefixes}" != "yes") ) ; then
-				if \local mod_name_ver=`\swmod_get_modversion "${dep}"` ; then
+				\local mod_name_ver=`\swmod_get_modversion "${dep}"`
+				if \test -n "${mod_name_ver}" ; then
 					\local dep="${mod_name_ver}"
 				fi
 			fi
