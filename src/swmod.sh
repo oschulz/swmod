@@ -22,7 +22,7 @@ swmod_is_valid_prefix() {
 
 	\local DIR="$1"
 
-	(swmod_get_modversion "${DIR}" &>/dev/null) && return
+	(swmod_get_modversion "${DIR}" >/dev/null 2>&1) && return
 
 	\test '(' -d "${DIR}/bin" ')' \
 		-o '(' -d "${DIR}/lib" ')' -o '(' -d "${DIR}/lib64" ')' \
@@ -487,7 +487,7 @@ swmod_load() {
 		\echo "MANPATH already modified by module init script, skipping." 1>&2
 	fi
 
-	if (\pkg-config --version &> /dev/null); then
+	if (\pkg-config --version > /dev/null 2>&1); then
 		if \test "$PKG_CONFIG_PATH" = "$SWMOD_PREV_PKG_CONFIG_PATH" ; then
 			# pkg-config available
 			\export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
