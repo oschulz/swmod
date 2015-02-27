@@ -210,11 +210,6 @@ swmod_init() {
 	## Set swmod alias ##
 
 	\alias swmod='source swmod.sh'
-
-	## Set SW_VERSION_ROOT and SWMOD_INST_BASE, if not already set ##
-
-	\export SWMOD_MODPATH="${SWMOD_MODPATH:-${HOME}/.local/sw}"
-	\export SWMOD_INST_BASE="${SWMOD_INST_BASE:-${HOME}/.local/sw}"
 }
 
 
@@ -674,6 +669,12 @@ if \test "${HOSTSPEC}" = "" ; then
 		return 1
 	fi
 fi
+
+
+# Set SWMOD_MODPATH and SWMOD_INST_BASE, if not already set
+
+\export SWMOD_MODPATH="${SWMOD_MODPATH:-${HOME}/.local/sw}"
+\export SWMOD_INST_BASE="${SWMOD_INST_BASE:-${HOME}/.local/sw}"
 
 
 # Get subcommand
