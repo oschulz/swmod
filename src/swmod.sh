@@ -152,6 +152,7 @@ swmod_findversion_indir() {
 			\echo "${SWMOD_PREFIX}"
 			return
 		else
+			\local spcand
 			while \read spcand; do
 				\local v=`\basename "${spcand}"`
 				if \swmod_version_match "${v}" "$SWMOD_SPECVER" ; then
