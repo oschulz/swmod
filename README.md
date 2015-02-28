@@ -16,7 +16,7 @@ so far.
 Installing swmod
 ----------------
 
-Copy the shell scripts `hostspec` and `swmod.sh` from `src` into (e.g.)
+Copy the shell scripts `hostspec` and `swmod.sh` from `bin` into (e.g.)
 
     $HOME/.local/bin
 
