@@ -113,19 +113,8 @@ swmod_is_loaded() {
 	# Arguments: prefix
 
 	\local prefix="$1"
-	\local module=`\swmod_get_modversion "${prefix}" | \cut -d '@' -f 1` || return 1
 
-	\swmod_check_loaded
-
-	while \read -d ':' loadedPrefix; do
-		\local loadedModule=`\swmod_get_modversion "${loadedPrefix}" | \cut -d '@' -f 1 || \echo ""`
-		if [ "$loadedModule" = "$module" ] ; then
-			\test "$prefix" = "$loadedPrefix" && return 0 || return 1
-		fi
-	done <<-@SUBST@
-		$( \echo "${SWMOD_LOADED_PREFIXES}:" )
-	@SUBST@
-	return 1
+	echo ":${SWMOD_LOADED_PREFIXES}:" | grep -q -F ":${prefix}:"
 }
 
 
