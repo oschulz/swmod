@@ -81,19 +81,42 @@ swmod_try_get_modversion() {
 }
 
 
-swmod_is_loaded() {
-	# Arguments: prefix
-
+swmod_check_loaded() {
 	# Some environments, like the shell started by a "screen" command, do not
 	# inherit special environment variables like LD_LIBRARY_PATH, but do
 	# inhert others like SWMOD_LOADED_PREFIXES. In such an inconsitent state,
 	# clear SWMOD_LOADED_PREFIXES:
-	if [ -z "${LD_LIBRARY_PATH}" -o -z "${DYLD_LIBRARY_PATH}" ] ; then
-		\unset SWMOD_LOADED_PREFIXES
+
+	if \test -n "${SWMOD_LIBRARY_PATH}" ; then
+		\local libpath_modified="no"
+
+		if \test "${SWMOD_OS}" = "osx" ; then
+			if (echo "${DYLD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+				\local libpath_modified="yes"
+			fi
+		else
+			if (echo "${LD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+				\local libpath_modified="yes"
+			fi
+		fi
+
+		if \test "${libpath_modified}" = "yes" ; then
+			\echo "Warning: Entries removed from library path (screen environment?), resetting list of modules loaded by swmod." >&2
+			\unset SWMOD_LOADED_PREFIXES
+			\unset SWMOD_LIBRARY_PATH
+		fi
 	fi
+}
+
+
+swmod_is_loaded() {
+	# Arguments: prefix
 
 	\local prefix="$1"
 	\local module=`\swmod_get_modversion "${prefix}" | \cut -d '@' -f 1` || return 1
+
+	\swmod_check_loaded
+
 	while \read -d ':' loadedPrefix; do
 		\local loadedModule=`\swmod_get_modversion "${loadedPrefix}" | \cut -d '@' -f 1 || \echo ""`
 		if [ "$loadedModule" = "$module" ] ; then
@@ -620,6 +643,8 @@ swmod_list() {
 			fi
 		fi
 	fi
+
+	\swmod_check_loaded
 
 	while \read -d ':' loadedPrefix; do
 		if \test -n "${loadedPrefix}" ; then
