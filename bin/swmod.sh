@@ -226,11 +226,38 @@ swmod_init() {
 
 
 
+# == os subcommand ==============================================
+
+swmod_os() {
+	if \test -n "${SWMOD_OS}"; then
+		\echo "${SWMOD_OS}"
+		return
+	fi
+
+
+	\local UNAME_KERNEL=`\uname -s`
+
+	if [ "${UNAME_KERNEL}" = 'Darwin' ] ; then
+		\export SWMOD_OS="osx"
+	else
+		\export SWMOD_OS=`\echo "${UNAME_KERNEL}" | \tr '[:upper:]' '[:lower:]' | \sed 's/[^A-Za-z0-9]//g'`
+	fi
+
+
+	if \test -z "${SWMOD_OS}"; then
+		\echo "Error: Couldn't determine operating system type." 1>&2
+		\export SWMOD_OS="unknown"
+		\echo "${SWMOD_OS}"
+		return 1
+	else
+		\echo "${SWMOD_OS}"
+	fi
+}
+
+
 # == hostspec subcommand ==============================================
 
-# Generates a generic host-type specification string
-#
-# Examples:
+# Examples results:
 # linux-debian-4.0-x86_64
 # linux-ubuntu-8.04-i686
 # linux-slc-4.6-x86_64
@@ -239,19 +266,19 @@ swmod_init() {
 
 
 swmod_hostspec() {
-	if [ "${SWMOD_HOSTSPEC}" != "" ] ; then
-		\echo "${SWMOD_HOSTSPEC}"
-		return 0
-	elif [ -f /etc/hostspec ] ; then
-		\cat /etc/hostspec | \grep -v '^#' | \grep -o '[^[:space:]]\+' | \head -n 1
-		return 0;
+	# For backward compatibility:
+	if \test -z "${SWMOD_HOSTSPEC}" -a -n "${HOSTSPEC}" ; then
+		\export SWMOD_HOSTSPEC="${HOSTSPEC}"
 	fi
 
-	\local UNAME_KERNEL=`\uname -s`
+	if \test -n "${SWMOD_HOSTSPEC}"; then
+		\echo "${SWMOD_HOSTSPEC}"
+		return
+	fi
 
-	if [ "${UNAME_KERNEL}" = 'Linux' ] ; then
-		\local OS="linux"
+	\swmod_os 1>/dev/null 2>&1
 
+	if [ "${SWMOD_OS}" = 'linux' ] ; then
 		\local DIST=`\lsb_release -s -i`
 		if [ "${DIST}" = "Debian" ] ; then
 			\local DIST='debian'
@@ -287,20 +314,28 @@ swmod_hostspec() {
 		\local REL=`\lsb_release -s -r`
 		\local CPU=`\uname -m`
 
-		\echo "${OS}-${DIST}-${REL}-${CPU}"
-	elif [ "${UNAME_KERNEL}" = 'SunOS' ] ; then
-		\local OS="sunos"
+		\export SWMOD_HOSTSPEC="${SWMOD_OS}-${DIST}-${REL}-${CPU}"
+	elif [ "${SWMOD_OS}" = 'sunos' ] ; then
 		\local REL=`\uname -r`
 		\local CPU=`\uname -m`
-		\echo "${OS}-${REL}-${CPU}"
-	elif [ "${UNAME_KERNEL}" = 'Darwin' ] ; then
-		\local OS="osx"
+		\export SWMOD_HOSTSPEC="${SWMOD_OS}-${REL}-${CPU}"
+	elif [ "${SWMOD_OS}" = 'osx' ] ; then
 		\local REL=`\sw_vers -productVersion`
 		\local CPU=`\uname -m`
-		\echo "${OS}-${REL}-${CPU}"
+		\export SWMOD_HOSTSPEC="${SWMOD_OS}-${REL}-${CPU}"
 	else
 		\echo unknown
 		return 1
+	fi
+
+
+	if \test -z "${SWMOD_HOSTSPEC}"; then
+		\echo "Error: Couldn't determine hostspec string." 1>&2
+		\export SWMOD_HOSTSPEC="unknown"
+		\echo "${SWMOD_HOSTSPEC}"
+		return 1
+	else
+		\echo "${SWMOD_HOSTSPEC}"
 	fi
 }
 
@@ -965,28 +1000,6 @@ if ! (\ps $$ | \grep -q 'sh\|bash') ; then
 fi
 
 
-# Check SWMOD_HOSTSPEC
-
-# For backward compatibility:
-if \test -z "${SWMOD_HOSTSPEC}" -a -n "${HOSTSPEC}" ; then
-	export SWMOD_HOSTSPEC="${HOSTSPEC}"
-fi
-
-if \test -z "${SWMOD_HOSTSPEC}"; then
-	\export SWMOD_HOSTSPEC="`\swmod_hostspec`"
-	if \test "${SWMOD_HOSTSPEC}" = "" ; then
-		\echo "Error: Could not determine host specification." 1>&2
-		return 1
-	fi
-fi
-
-
-# Set SWMOD_MODPATH and SWMOD_INST_BASE, if not already set
-
-\export SWMOD_MODPATH="${SWMOD_MODPATH:-${HOME}/.local/sw}"
-\export SWMOD_INST_BASE="${SWMOD_INST_BASE:-${HOME}/.local/sw}"
-
-
 # Get subcommand
 
 SWMOD_COMMAND="$1"
@@ -1035,6 +1048,10 @@ COMMANDS
   instpkg             Similar to install, but installs a software package from
                       a given location and performs the build in $TMPDIR.
 
+  os                  Show current operating system type (same as the
+                      OS-specific part of the output of "hostspec").
+
+
 ENVIRONMENT VARIABLES
 ---------------------
 
@@ -1061,7 +1078,20 @@ EOF
 return 1
 fi
 
+
+# Make sure SWMOD_OS and SWMOD_HOSTSPEC are initialized
+\swmod_os 1>/dev/null 2>&1
+\swmod_hostspec 1>/dev/null 2>&1
+
+
+# Set SWMOD_MODPATH and SWMOD_INST_BASE, if not already set
+
+\export SWMOD_MODPATH="${SWMOD_MODPATH:-${HOME}/.local/sw}"
+\export SWMOD_INST_BASE="${SWMOD_INST_BASE:-${HOME}/.local/sw}"
+
+
 if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
+elif \test "${SWMOD_COMMAND}" = "os" ; then \swmod_os "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
 elif \test "${SWMOD_COMMAND}" = "avail" ; then \swmod_avail "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
