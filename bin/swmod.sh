@@ -501,15 +501,18 @@ swmod_load() {
 		\local LIBDIR="${SWMOD_PREFIX}/lib"
 	fi
 
-	if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
-		\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+	if \test "${SWMOD_OS}" = "osx" ; then
+		if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
+			\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+		else
+			\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
 	else
-		\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
-	fi
-	if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
-		\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
-	else
-		\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
+			\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
+		else
+			\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
 	fi
 
 	if \test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
@@ -551,6 +554,13 @@ swmod_load() {
 	fi
 
 	\export SWMOD_LOADED_PREFIXES="${SWMOD_PREFIX}:${SWMOD_LOADED_PREFIXES}"
+
+	## Save current library path for modification detection ##
+	if \test "${SWMOD_OS}" = "osx" ; then
+		\export SWMOD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}"
+	else
+		\export SWMOD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+	fi
 }
 
 
