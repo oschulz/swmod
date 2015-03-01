@@ -16,7 +16,7 @@ so far.
 Installing swmod
 ----------------
 
-Copy the shell scripts `hostspec` and `swmod.sh` from `bin` into (e.g.)
+Copy the shell script `swmod.sh` from `bin` into (e.g.)
 
     $HOME/.local/bin
 
@@ -36,15 +36,15 @@ Using swmod
 
 Any directory structure of the form
 
-    MODULE_NAME/`hostspec`/MODULE_VERSION
+    MODULE_NAME/`swmod hostspec`/MODULE_VERSION
 
 that looks like a binary software installation (there's a `bin` or `lib`
 directory or an `swmod.deps` file, etc.) can be used as an swmod software
 module.
 
-The output of the `hostspec` command (part of swmod) is a system specific
-string, e.g. "linux-ubuntu-12.04-x86_64", to support heterogeneous computing
-environments. You can override it with the environment variable
+The output of the `swmod hostspec` command (part of swmod) is a system
+specific string, e.g. "linux-ubuntu-12.04-x86_64", to support heterogeneous
+computing environments. You can override it with the environment variable
 `$SWMOD_HOSTSPEC`.
 
 swmod looks for modules in all directories listed in the (colon-separated)
