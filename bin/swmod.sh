@@ -563,6 +563,8 @@ swmod_load() {
 	if \test "${SETCLFLAGS}" = "yes"; then
 		\export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
 		\export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
+		\export SWMOD_CMAKE_INCLUDE_PATH="${SWMOD_PREFIX}/include:${SWMOD_CMAKE_INCLUDE_PATH}"
+		\export SWMOD_CMAKE_LIBRARY_PATH="${LIBDIR}:${SWMOD_CMAKE_LIBRARY_PATH}"
 	fi
 
 	\export SWMOD_LOADED_PREFIXES="${SWMOD_PREFIX}:${SWMOD_LOADED_PREFIXES}"
@@ -941,12 +943,72 @@ swmod_configure() {
 }
 
 
+# == cmake subcommand ===============================================
+
+swmod_cmake_usage() {
+\echo >&2 "Usage: swmod cmake [CMAKE_OPTION] ... SOURCE_DIR"
+cat >&2 <<EOF
+
+Run cmake, automatically setting CMAKE_INSTALL_PREFIX and (if managed
+by smod) compiler and linker flags.
+
+This should be run from within a (probably empty) build directory. SOURCE_DIR
+is the source directory containing the "CMakeLists.txt".
+EOF
+} # swmod_cmake_usage()
+
+
+swmod_cmake() {
+	if \test -z "${1}" ; then
+		\swmod_load_usage
+		return 1
+	fi
+
+	\swmod_require_inst_prefix || return 1
+
+	(
+		if \test -n "${SWMOD_CMAKE_INCLUDE_PATH}" ; then
+			\export CMAKE_INCLUDE_PATH="${SWMOD_CMAKE_INCLUDE_PATH}"
+		fi
+
+		if \test -n "${SWMOD_CMAKE_LIBRARY_PATH}" ; then
+			\export CMAKE_LIBRARY_PATH="${SWMOD_CMAKE_LIBRARY_PATH}"
+		fi
+
+		cmake -DCMAKE_INSTALL_PREFIX="${SWMOD_INST_PREFIX}" "$@"
+	)
+}
+
+
 # == install subcommand =============================================
 
 swmod_install() {
 	\local NCORES=`\grep -c '^processor' /proc/cpuinfo 2>/dev/null || \sysctl -n hw.ncpu 2>/dev/null || \echo 4`
 
-	if \test -x "autogen.sh" -o -x "configure" -o -f "configure.in" -o -f "configure.ac"; then
+	if \test -f "CMakeLists.txt"; then
+		\echo "INFO: CMake based build system detected" 1>&2
+		\local NPROCS="${NCORES}"
+
+		(
+			\local src_dir="`pwd`"
+			\local src_dir_base=`basename "${src_dir}"`
+			\local upper_dir=`dirname "${src_dir}"`
+			\local build_dir="${upper_dir}/${src_dir_base}_build_${SWMOD_HOSTSPEC}"
+
+			\mkdir -p "${build_dir}"
+			\cd "${build_dir}"
+
+			(if [ "Makefile" -nt "../CMakeLists.txt" ] ; then
+				\echo "INFO: Using existing Makefile" 1>&2
+			else
+				\echo "Running clean" 1>&2
+				(\make clean || \true) && \swmod_cmake "$@" "${src_dir}"
+			fi) && (
+				\make "-j${NPROCS}" install &&
+				\echo "Installation successful."
+			)
+		)
+	elif \test -x "autogen.sh" -o -x "configure" -o -f "configure.in" -o -f "configure.ac"; then
 		\echo "INFO: Autoconf / configure based build system detected" 1>&2
 
 		if \test -f "Makefile.am"; then
@@ -976,6 +1038,7 @@ swmod_install() {
 		)
 	else
 		\echo "ERROR: Can't find (supported) build system current directory." 1>&2
+		return 1
 	fi
 }
 
@@ -994,21 +1057,22 @@ swmod_instpkg() {
 		return 1
 	fi
 
-	BUILDDIR=`\mktemp -d -t "$(whoami)-build-XXXXXX"`
-	\echo "Build directory: \"${BUILDDIR}\""
+	\local PKGBASENAME=`basename "${PKGSRC}"`
+	\local BUILDAREA=`\mktemp -d -t "$(whoami)-build-XXXXXX"`
+	\local SRCDIR="${BUILDAREA}/${PKGBASENAME}"
+	\echo "Build area: \"${BUILDAREA}\""
 
-	rsync -rlpt "${PKGSRC}/" "${BUILDDIR}/"
+	\rsync -rlpt "${PKGSRC}/" "${SRCDIR}/"
 
 	(
-		cd "${BUILDDIR}" \
+		\cd "${SRCDIR}" \
 		&& (\make maintainer-clean || \make distclean || \make clean || \true) \
 		&& \swmod_install "$@"
 	) && (
-		\echo "Installation successful."
-		\rm -rf "${BUILDDIR}"
+		\rm -rf "${BUILDAREA}"
 		return 0
 	) || (
-		\echo "ERROR: Installation failed, build directory: \"${BUILDDIR}\"" 1>&2
+		\echo "ERROR: Installation failed, build area: \"${BUILDAREA}\"" 1>&2
 		return 1
 	)
 }
@@ -1064,6 +1128,9 @@ COMMANDS
                       configure file ("configure" or "./configure") is
                       specified but doesn't exist, swmod will try to generate
                       it by running "autogen.sh" (if present) or autoreconf.
+
+  cmake               Run CMake with suitable options for the current install
+                      prefix, etc.
 
   install             Run all necessary steps to build and install the
                       software package in the current directory. Arguments are
@@ -1126,6 +1193,7 @@ elif \test "${SWMOD_COMMAND}" = "add-deps" ; then \swmod_add_deps "$@"
 elif \test "${SWMOD_COMMAND}" = "adddeps" ; then \swmod_adddeps "$@"
 elif \test "${SWMOD_COMMAND}" = "get-deps" ; then \swmod_get_deps "$@"
 elif \test x`\basename "${SWMOD_COMMAND}"` = x"configure" ; then \swmod_configure "${SWMOD_COMMAND}" "$@"
+elif \test "${SWMOD_COMMAND}" = "cmake" ; then \swmod_cmake "$@"
 elif \test "${SWMOD_COMMAND}" = "install" ; then \swmod_install "$@"
 elif \test "${SWMOD_COMMAND}" = "instpkg" ; then \swmod_instpkg "$@"
 else
