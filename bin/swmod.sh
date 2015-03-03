@@ -352,8 +352,29 @@ swmod_hostspec() {
 }
 
 
+# == nthreads subcommand ==============================================
 
-# == avail subcommand ================================================
+swmod_nthreads() {
+	if \test -n "${SWMOD_NTHREADS}"; then
+		\echo "${SWMOD_NTHREADS}"
+		return
+	fi
+
+	export SWMOD_NTHREADS=`\grep -c '^processor' /proc/cpuinfo 2>/dev/null || \sysctl -n hw.ncpu 2>/dev/null`
+
+
+	if \test -z "${SWMOD_NTHREADS}"; then
+		\echo "Warning: Couldn't determine number of hardware threads on system, assuming 1." 1>&2
+		\export SWMOD_NTHREADS="1"
+		\echo "${SWMOD_NTHREADS}"
+		return 1
+	else
+		\echo "${SWMOD_NTHREADS}"
+	fi
+}
+
+
+# == avail subcommand =================================================
 
 swmod_avail_usage() {
 \echo >&2 "Usage: swmod avail [NAME[@VERSION]]"
@@ -983,11 +1004,9 @@ swmod_cmake() {
 # == install subcommand =============================================
 
 swmod_install() {
-	\local NCORES=`\grep -c '^processor' /proc/cpuinfo 2>/dev/null || \sysctl -n hw.ncpu 2>/dev/null || \echo 4`
-
 	if \test -f "CMakeLists.txt"; then
 		\echo "INFO: CMake based build system detected" 1>&2
-		\local NPROCS="${NCORES}"
+		\local NPROCS=`\swmod_nthreads`
 
 		(
 			\local src_dir="`pwd`"
@@ -1012,11 +1031,11 @@ swmod_install() {
 		\echo "INFO: Autoconf / configure based build system detected" 1>&2
 
 		if \test -f "Makefile.am"; then
-			\local NPROCS="${NCORES}"
-			\echo "INFO: Automake detected, will run parallel build with ${NCORES} threads." 1>&2
+			\local NPROCS=`\swmod_nthreads`
+			\echo "INFO: Automake detected, will run parallel build with ${NPROCS} parallel jobs." 1>&2
 		else
 			\local NPROCS=1
-			\echo "INFO: No automake detected, parallel build may not be safe, using single-core build." 1>&2
+			\echo "INFO: No automake detected, parallel build may not be safe, using non-parallel build." 1>&2
 		fi
 
 		if [ -f "configure.in" -a "configure" -nt "configure.in" -o -f "configure.ac" -a "configure" -nt "configure.ac" ] ; then
@@ -1142,6 +1161,10 @@ COMMANDS
   os                  Show current operating system type (same as the
                       OS-specific part of the output of "hostspec").
 
+  nthreads            Print number of parallel hardware threads available on
+                      the current system. Used as default for the number of
+                      processes/threads during parallel builds.
+
 
 ENVIRONMENT VARIABLES
 ---------------------
@@ -1184,6 +1207,7 @@ fi
 if \test "${SWMOD_COMMAND}" = "init" ; then \swmod_init "$@"
 elif \test "${SWMOD_COMMAND}" = "os" ; then \swmod_os "$@"
 elif \test "${SWMOD_COMMAND}" = "hostspec" ; then \swmod_hostspec "$@"
+elif \test "${SWMOD_COMMAND}" = "nthreads" ; then \swmod_nthreads "$@"
 elif \test "${SWMOD_COMMAND}" = "avail" ; then \swmod_avail "$@"
 elif \test "${SWMOD_COMMAND}" = "load" ; then \swmod_load "$@"
 elif \test "${SWMOD_COMMAND}" = "list" ; then \swmod_list "$@"
