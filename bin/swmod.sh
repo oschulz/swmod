@@ -766,7 +766,8 @@ swmod_target() {
 			\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
 
 			if \test "${SWMOD_PREFIX}" = "" ; then
-				\swmod_add_deps none
+				\echo "Creating empty directory ${SWMOD_INST_PREFIX}" 1>&2
+				\mkdir -p "${SWMOD_INST_PREFIX}"
 				\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
 
 				if \test "${SWMOD_PREFIX}" = "" ; then
