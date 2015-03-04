@@ -228,6 +228,146 @@ swmod_require_inst_prefix() {
 }
 
 
+swmod_load_single() {
+	# Arguments: module[@version]
+
+	\local SWMOD_MODSPEC=$1
+
+	if \test -z "${SWMOD_MODSPEC}"; then
+		return 1
+	fi
+
+	## Detect prefix ##
+
+	if swmod_is_valid_prefix "${SWMOD_MODSPEC}" ; then
+		\local SWMOD_PREFIX="${SWMOD_MODSPEC}"
+	else
+		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
+	fi
+
+	if \test "${SWMOD_PREFIX}" = "" ; then
+		\echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
+		return 1
+	fi
+
+	if \swmod_is_loaded "${SWMOD_PREFIX}" ; then
+		\echo "Skipping module \"${SWMOD_PREFIX}\", already loaded" 1>&2
+		return
+	else
+		\echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
+	fi
+
+	\local SETCLFLAGS="no"
+	if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
+		for dep in `\cat "${SWMOD_PREFIX}/swmod.deps"`; do
+			if \test "${dep}" = "!clflags"; then
+				\local SETCLFLAGS="yes"
+			else
+				\echo "Resolving dependency ${dep}" 1>&2
+				\swmod_load "${dep}"
+			fi
+		done
+	fi
+
+
+	## Current environment variables ##
+
+	\local SWMOD_PREV_PATH="$PATH"
+	\local SWMOD_PREV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
+	\local SWMOD_PREV_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
+	\local SWMOD_PREV_MANPATH="$MANPATH"
+	\local SWMOD_PREV_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+	\local SWMOD_PREV_PYTHONPATH="$PYTHONPATH"
+	\local SWMOD_PREV_ROOTSYS="$ROOTSYS"
+
+
+	## Module-specific init script ##
+
+	if [ -f "${SWMOD_PREFIX}/swmodrc.sh" ] ; then
+		\echo "Sourcing \"${SWMOD_PREFIX}/swmodrc.sh\"." 1>&2
+		. "${SWMOD_PREFIX}/swmodrc.sh"
+	fi
+	
+
+	## Set standards paths and variables ##
+
+	if \test "$PATH" = "$SWMOD_PREV_PATH" ; then
+		\export PATH="${SWMOD_PREFIX}/bin:$PATH"
+	else
+		\echo "PATH already modified by module init script, skipping." 1>&2
+	fi
+
+	if \test -d "${SWMOD_PREFIX}/lib64" ; then
+		\local LIBDIR="${SWMOD_PREFIX}/lib64"
+	else
+		\local LIBDIR="${SWMOD_PREFIX}/lib"
+	fi
+
+	if \test "${SWMOD_OS}" = "osx" ; then
+		if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
+			\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
+		else
+			\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
+	else
+		if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
+			\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
+		else
+			\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
+		fi
+	fi
+
+	if \test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
+		if \test -d "${SWMOD_PREFIX}/man" ; then
+			\export MANPATH="${SWMOD_PREFIX}/man:`\manpath 2> /dev/null`"
+		else
+			\export MANPATH="${SWMOD_PREFIX}/share/man:`\manpath 2> /dev/null`"
+		fi
+	else
+		\echo "MANPATH already modified by module init script, skipping." 1>&2
+	fi
+
+	if (\pkg-config --version > /dev/null 2>&1); then
+		if \test "$PKG_CONFIG_PATH" = "$SWMOD_PREV_PKG_CONFIG_PATH" ; then
+			# pkg-config available
+			\export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
+		else
+			\echo "MANPATH already modified by module init script, skipping." 1>&2
+		fi
+	fi
+
+	
+	## Check for python packages
+
+	if \test "$PYTHONPATH" = "$SWMOD_PREV_PYTHONPATH" ; then
+		\local SWMOD_PYTHON_V=`\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'`
+		if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
+			\export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
+		fi
+	else
+		\echo "PYTHONPATH already modified by module init script, skipping." 1>&2
+	fi
+
+
+	## Optionally add module to compiler and linker search path ##
+	if \test "${SETCLFLAGS}" = "yes"; then
+		\export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
+		\export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
+		\export SWMOD_CMAKE_INCLUDE_PATH="${SWMOD_PREFIX}/include:${SWMOD_CMAKE_INCLUDE_PATH}"
+		\export SWMOD_CMAKE_LIBRARY_PATH="${LIBDIR}:${SWMOD_CMAKE_LIBRARY_PATH}"
+	fi
+
+	\export SWMOD_LOADED_PREFIXES="${SWMOD_PREFIX}:${SWMOD_LOADED_PREFIXES}"
+
+	## Save current library path for modification detection ##
+	if \test "${SWMOD_OS}" = "osx" ; then
+		\export SWMOD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}"
+	else
+		\export SWMOD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+	fi
+}
+
+
 # == init subcommand ==================================================
 
 swmod_init() {
@@ -458,144 +598,15 @@ EOF
 
 
 swmod_load() {
-	## Parse arguments ##
-
-	\local SWMOD_MODSPEC=$1
-
-	if \test "${SWMOD_MODSPEC}" = "" ; then
+	if \test -z "${1}" ; then
 		\swmod_load_usage
 		return 1
 	fi
 
-
-	## Detect prefix ##
-
-	if swmod_is_valid_prefix "${SWMOD_MODSPEC}" ; then
-		\local SWMOD_PREFIX="${SWMOD_MODSPEC}"
-	else
-		\local SWMOD_PREFIX=`\swmod_getprefix "${SWMOD_MODSPEC}"`
-	fi
-
-	if \test "${SWMOD_PREFIX}" = "" ; then
-		\echo "Error: No suitable instance for module specification \"${SWMOD_MODSPEC}\" found." 1>&2
-		return 1
-	fi
-
-	if \swmod_is_loaded "${SWMOD_PREFIX}" ; then
-		\echo "Skipping module \"${SWMOD_PREFIX}\", already loaded" 1>&2
-		return
-	else
-		\echo "Loading module \"${SWMOD_PREFIX}\"" 1>&2
-	fi
-
-	\local SETCLFLAGS="no"
-	if [ -f "${SWMOD_PREFIX}/swmod.deps" ] ; then
-		for dep in `\cat "${SWMOD_PREFIX}/swmod.deps"`; do
-			if \test "${dep}" = "!clflags"; then
-				\local SETCLFLAGS="yes"
-			else
-				\echo "Resolving dependency ${dep}" 1>&2
-				\swmod_load "${dep}"
-			fi
-		done
-	fi
-
-
-	## Current environment variables ##
-
-	\local SWMOD_PREV_PATH="$PATH"
-	\local SWMOD_PREV_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
-	\local SWMOD_PREV_DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH"
-	\local SWMOD_PREV_MANPATH="$MANPATH"
-	\local SWMOD_PREV_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-	\local SWMOD_PREV_PYTHONPATH="$PYTHONPATH"
-	\local SWMOD_PREV_ROOTSYS="$ROOTSYS"
-
-
-	## Module-specific init script ##
-
-	if [ -f "${SWMOD_PREFIX}/swmodrc.sh" ] ; then
-		\echo "Sourcing \"${SWMOD_PREFIX}/swmodrc.sh\"." 1>&2
-		. "${SWMOD_PREFIX}/swmodrc.sh"
-	fi
-	
-
-	## Set standards paths and variables ##
-
-	if \test "$PATH" = "$SWMOD_PREV_PATH" ; then
-		\export PATH="${SWMOD_PREFIX}/bin:$PATH"
-	else
-		\echo "PATH already modified by module init script, skipping." 1>&2
-	fi
-
-	if \test -d "${SWMOD_PREFIX}/lib64" ; then
-		\local LIBDIR="${SWMOD_PREFIX}/lib64"
-	else
-		\local LIBDIR="${SWMOD_PREFIX}/lib"
-	fi
-
-	if \test "${SWMOD_OS}" = "osx" ; then
-		if \test "$DYLD_LIBRARY_PATH" = "$SWMOD_PREV_DYLD_LIBRARY_PATH" ; then
-			\export DYLD_LIBRARY_PATH="${LIBDIR}:$DYLD_LIBRARY_PATH"
-		else
-			\echo "DYLD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
-		fi
-	else
-		if \test "$LD_LIBRARY_PATH" = "$SWMOD_PREV_LD_LIBRARY_PATH" ; then
-			\export LD_LIBRARY_PATH="${LIBDIR}:$LD_LIBRARY_PATH"
-		else
-			\echo "LD_LIBRARY_PATH already modified by module init script, skipping." 1>&2
-		fi
-	fi
-
-	if \test "$MANPATH" = "$SWMOD_PREV_MANPATH" ; then
-		if \test -d "${SWMOD_PREFIX}/man" ; then
-			\export MANPATH="${SWMOD_PREFIX}/man:`\manpath 2> /dev/null`"
-		else
-			\export MANPATH="${SWMOD_PREFIX}/share/man:`\manpath 2> /dev/null`"
-		fi
-	else
-		\echo "MANPATH already modified by module init script, skipping." 1>&2
-	fi
-
-	if (\pkg-config --version > /dev/null 2>&1); then
-		if \test "$PKG_CONFIG_PATH" = "$SWMOD_PREV_PKG_CONFIG_PATH" ; then
-			# pkg-config available
-			\export PKG_CONFIG_PATH="${LIBDIR}/pkgconfig:$PKG_CONFIG_PATH"
-		else
-			\echo "MANPATH already modified by module init script, skipping." 1>&2
-		fi
-	fi
-
-	
-	## Check for python packages
-
-	if \test "$PYTHONPATH" = "$SWMOD_PREV_PYTHONPATH" ; then
-		\local SWMOD_PYTHON_V=`\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'`
-		if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
-			\export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
-		fi
-	else
-		\echo "PYTHONPATH already modified by module init script, skipping." 1>&2
-	fi
-
-
-	## Optionally add module to compiler and linker search path ##
-	if \test "${SETCLFLAGS}" = "yes"; then
-		\export SWMOD_CPPFLAGS="-I${SWMOD_PREFIX}/include $SWMOD_CPPFLAGS"
-		\export SWMOD_LDFLAGS="-L${LIBDIR} $SWMOD_LDFLAGS"
-		\export SWMOD_CMAKE_INCLUDE_PATH="${SWMOD_PREFIX}/include:${SWMOD_CMAKE_INCLUDE_PATH}"
-		\export SWMOD_CMAKE_LIBRARY_PATH="${LIBDIR}:${SWMOD_CMAKE_LIBRARY_PATH}"
-	fi
-
-	\export SWMOD_LOADED_PREFIXES="${SWMOD_PREFIX}:${SWMOD_LOADED_PREFIXES}"
-
-	## Save current library path for modification detection ##
-	if \test "${SWMOD_OS}" = "osx" ; then
-		\export SWMOD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}"
-	else
-		\export SWMOD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
-	fi
+	\local swmod_modspec
+	for swmod_modspec in "$@"; do
+		\swmod_load_single "${swmod_modspec}"
+	done;
 }
 
 
