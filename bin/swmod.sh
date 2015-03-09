@@ -91,11 +91,11 @@ swmod_check_loaded() {
 		\local libpath_modified="no"
 
 		if \test "${SWMOD_OS}" = "osx" ; then
-			if (echo "${DYLD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+			if (\echo "${DYLD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
 				\local libpath_modified="yes"
 			fi
 		else
-			if (echo "${LD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+			if (\echo "${LD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
 				\local libpath_modified="yes"
 			fi
 		fi
