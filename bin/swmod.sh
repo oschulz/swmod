@@ -17,6 +17,12 @@
 
 # == functions ========================================================
 
+swmod_normalize_path() {
+	# Arguments: path
+	\echo "${1}" | \sed 's|//\+|/|g; s|\(.\+\)/$|\1|'
+}
+
+
 swmod_is_valid_prefix() {
 	# Arguments: prefix
 
@@ -112,9 +118,9 @@ swmod_check_loaded() {
 swmod_is_loaded() {
 	# Arguments: prefix
 
-	\local prefix="$1"
+	\local prefix=`\swmod_normalize_path "${1}"`
 
-	echo ":${SWMOD_LOADED_PREFIXES}:" | grep -q -F ":${prefix}:"
+	\swmod_normalize_path ":${SWMOD_LOADED_PREFIXES}:" | grep -q -F ":${prefix}:"
 }
 
 
@@ -136,7 +142,7 @@ swmod_findversion_indir() {
 			if (\test -d "${CAND_PREFIX}") && (\swmod_is_valid_prefix "${CAND_PREFIX}") ; then
 				\echo "Assuming module version \"${v}\"" 1>&2
 				\local SWMOD_PREFIX="${CAND_PREFIX}"
-				\echo "${SWMOD_PREFIX}"
+				\swmod_normalize_path "${SWMOD_PREFIX}"
 				return
 			fi
 		done
@@ -148,7 +154,7 @@ swmod_findversion_indir() {
 				if \swmod_is_valid_prefix "${CAND_PREFIX}" ; then
 					\echo "Assuming module version \"${v}\"" 1>&2
 					\local SWMOD_PREFIX="${CAND_PREFIX}"
-					\echo "${SWMOD_PREFIX}"
+					\swmod_normalize_path "${SWMOD_PREFIX}"
 					return
 				fi
 			done <<-@SUBST@
@@ -161,7 +167,7 @@ swmod_findversion_indir() {
 		if \test -d "${BASE_DIR}/${SWMOD_HOSTSPEC}/${SEARCH_VER}" ; then
 			# \echo "DEBUG: Exact match." 1>&2
 			\local SWMOD_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${SWMOD_SPECVER}"
-			\echo "${SWMOD_PREFIX}"
+			\swmod_normalize_path "${SWMOD_PREFIX}"
 			return
 		else
 			\local spcand
@@ -169,7 +175,7 @@ swmod_findversion_indir() {
 				\local v=`\basename "${spcand}"`
 				if \swmod_version_match "${v}" "$SWMOD_SPECVER" ; then
 					\local SWMOD_PREFIX="${BASE_DIR}/${SWMOD_HOSTSPEC}/${v}"
-					\echo "${SWMOD_PREFIX}"
+					\swmod_normalize_path "${SWMOD_PREFIX}"
 					return
 				fi
 			done <<-@SUBST@
@@ -214,7 +220,7 @@ swmod_getprefix() {
 				fi
 			fi
 		done <<-@SUBST@
-			$( \echo "${SWMOD_MODPATH}:" )
+			$( \swmod_normalize_path "${SWMOD_MODPATH}:" )
 		@SUBST@
 	fi
 }
@@ -579,7 +585,7 @@ swmod_avail() {
 			@SUBST@
 		fi 
 	done | sort | uniq ) <<-@SUBST@
-		$( \echo "${SWMOD_MODPATH}:" )
+		$( \swmod_normalize_path "${SWMOD_MODPATH}:" )
 	@SUBST@
 }
 
@@ -656,7 +662,7 @@ swmod_list() {
 
 	if \test -n "${name_or_prefix}" ; then
 		if (\echo "${name_or_prefix}" | \grep -q '/') ; then
-			\local module_prefix=`\echo "${name_or_prefix}" | sed 's|//\+|/|g; s|/$||'`
+			\local module_prefix=`\swmod_normalize_path "${name_or_prefix}"`
 		else
 			\local module_spec="${name_or_prefix}"
 			\local module_prefix=`\swmod_getprefix "${module_spec}"`
@@ -684,7 +690,7 @@ swmod_list() {
 			fi
 		fi
 	done <<-@SUBST@
-		$( \echo "${SWMOD_LOADED_PREFIXES}:" )
+		$( \swmod_normalize_path "${SWMOD_LOADED_PREFIXES}:" )
 	@SUBST@
 
 	if \test -n "${name_or_prefix}" -a "${module_found}" != "yes" ; then
