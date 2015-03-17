@@ -8,9 +8,9 @@ can be loaded, and new software packages can be installed into a module.
 Basically, swmod sets environment variables like `PATH` and `LD_LIBRARY_PATH`
 and can automatically supply options like `--prefix` to configure scripts.
 
-swmod is currently only tested with bash, but should work with other
-`sh`-compatible shells. There are no plans to support `tcsh` or similar,
-so far.
+swmod is currently only works with bash, though it may in the future also
+support other `sh`-compatible shells. There are no plans to support `tcsh` or
+similar, so far.
 
 
 Installing swmod
