@@ -742,13 +742,13 @@ swmod_target() {
 	\shift `expr $OPTIND - 1`
 
 	\local SWMOD_MODSPEC="${1}"
-	
+
 	if \test -n "${SWMOD_MODSPEC}" ; then
 		\local SWMOD_MODULE=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 1`
 		\local SWMOD_MODVER=`\echo "${SWMOD_MODSPEC}@" | \cut -d '@' -f 2`
 
 		if \test -z "$SWMOD_MODVER" ; then
-			\echo "Error: Target module version must be specified." 1>&2; return
+			\echo "Error: Target module version must be specified." 1>&2
 			return 1
 		fi
 
