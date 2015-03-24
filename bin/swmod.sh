@@ -454,6 +454,8 @@ swmod_hostspec() {
 			\local DIST='rhel'
 		elif [ "${DIST}" = "RedHatEnterpriseWS" ] ; then
 			\local DIST='rhel'
+		elif [ "${DIST}" = "redhatenterpriseserver" ] ; then
+			\local DIST='rhel'
 		elif [ "${DIST}" = "CentOS" ] ; then
 			\local DIST='centos'
 		elif [ "${DIST}" = "Scientific Linux" ] ; then
