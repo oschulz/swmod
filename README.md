@@ -22,7 +22,7 @@ Copy the shell script `swmod.sh` from `bin` into (e.g.)
 
 and add the following to your `.bashrc` (resp. `.profile`):
 
-    export PATH="$HOME/.local/bin:$PATH".
+    export PATH="$HOME/.local/bin:$PATH"
     . swmod.sh init
 
 You may, of course, use any other directory in your `$PATH` instead of
