@@ -1001,7 +1001,7 @@ EOF
 
 swmod_cmake() {
 	if \test -z "${1}" ; then
-		\swmod_load_usage
+		\swmod_cmake_usage
 		return 1
 	fi
 
