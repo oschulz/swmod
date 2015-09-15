@@ -1022,6 +1022,8 @@ swmod_cmake() {
 # == install subcommand =============================================
 
 swmod_install() {
+	\swmod_require_inst_prefix || return 1
+
 	if \test -f "CMakeLists.txt"; then
 		\echo "INFO: CMake based build system detected" 1>&2
 		\local NPROCS=`\swmod_nthreads`
@@ -1093,6 +1095,8 @@ swmod_instpkg() {
 		\echo "source specification (\local or remote)."
 		return 1
 	fi
+
+	\swmod_require_inst_prefix || return 1
 
 	\local PKGBASENAME=`basename "${PKGSRC}"`
 	\local BUILDAREA=`\mktemp -d -t "$(whoami)-build-XXXXXX"`
