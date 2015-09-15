@@ -234,6 +234,17 @@ swmod_require_inst_prefix() {
 }
 
 
+swmod_python_version() {
+	\local python_version=`\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'`
+	if \test -z "${python_version}" ; then
+		"ERROR: Could not determine python version." 1>&2
+		return 1
+	else
+		echo "${python_version}"
+	fi
+}
+
+
 swmod_load_single() {
 	# Arguments: module[@version]
 
@@ -1021,6 +1032,67 @@ swmod_cmake() {
 }
 
 
+# == setup_py subcommand ===============================================
+
+swmod_setup_py_usage() {
+\echo >&2 "Usage: swmod setup.py"
+cat >&2 <<EOF
+
+Installs the Python project residing in the current directory.
+
+Creates "${SWMOD_INST_PREFIX}/lib/python[VERSION]/site-packages" and adds
+it to PYTHONPATH (if not already part of it). Then runs the setup.py in the
+current directory, automatically passing the right "--prefix" option for
+the current target module.
+
+EOF
+} # swmod_setup_py_usage()
+
+
+swmod_setup_py() {
+	\local OPTIND=1
+	while getopts ? opt
+	do
+		case "$opt" in
+			\?)	\swmod_setup_py_usage; return 1 ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
+
+	\swmod_require_inst_prefix || return 1
+
+	if \test ! -f "setup.py" ; then
+		\echo "ERROR: No \"setup.py\" file in current directory." 1>&2
+		return 1
+	fi
+
+	\local python_version=`\swmod_python_version`
+	\test -n "${python_version}" || return 1
+
+	if \test -d "${SWMOD_INST_PREFIX}/lib64" ; then
+		\local libdir="${SWMOD_INST_PREFIX}/lib64"
+	else
+		\local libdir="${SWMOD_INST_PREFIX}/lib"
+	fi
+
+	\local python_sitepkg_dir="${libdir}/python${python_version}/site-packages"
+
+	\local prefix=`\swmod_normalize_path "${libdir}/python${python_version}/site-packages"`
+
+	if \test ! -d "${python_sitepkg_dir}" ; then
+		echo "Creating directory \"${python_sitepkg_dir}\"."
+		mkdir -p "${python_sitepkg_dir}"
+	fi
+
+	if ! (\swmod_normalize_path ":${PYTHONPATH}:" | \grep -q -F ":${python_sitepkg_dir}:") ; then
+		echo "Adding \"${python_sitepkg_dir}\" to PYTHONPATH."
+		\export PYTHONPATH="${python_sitepkg_dir}:${PYTHONPATH}"
+	fi
+
+	\python setup.py install --prefix="$SWMOD_INST_PREFIX"
+}
+
+
 # == install subcommand =============================================
 
 swmod_install() {
@@ -1077,6 +1149,9 @@ swmod_install() {
 			\make install &&
 			\echo "Installation successful."
 		)
+	elif \test -f "setup.py"; then
+		\swmod_setup_py &&
+		echo "Installation successful."
 	else
 		\echo "ERROR: Can't find (supported) build system current directory." 1>&2
 		return 1
@@ -1175,6 +1250,9 @@ COMMANDS
   cmake               Run CMake with suitable options for the current install
                       prefix, etc.
 
+  setup.py            Install python project to current install target prefix
+                      via setup.py
+
   install             Run all necessary steps to build and install the
                       software package in the current directory. Arguments are
                       passed on to "configure".
@@ -1242,6 +1320,7 @@ elif \test "${SWMOD_COMMAND}" = "adddeps" ; then \swmod_adddeps "$@"
 elif \test "${SWMOD_COMMAND}" = "get-deps" ; then \swmod_get_deps "$@"
 elif \test x`\basename "${SWMOD_COMMAND}"` = x"configure" ; then \swmod_configure "${SWMOD_COMMAND}" "$@"
 elif \test "${SWMOD_COMMAND}" = "cmake" ; then \swmod_cmake "$@"
+elif \test "${SWMOD_COMMAND}" = "setup.py" ; then \swmod_setup_py "$@"
 elif \test "${SWMOD_COMMAND}" = "install" ; then \swmod_install "$@"
 elif \test "${SWMOD_COMMAND}" = "instpkg" ; then \swmod_instpkg "$@"
 else

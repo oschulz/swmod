@@ -150,8 +150,9 @@ has direct support for the following build systems:
 
 * GNU Autotools (and compatible "configure" scripts)
 * CMake
+* Phyton setup.py
 
-#### GNU Autotools Projects
+#### Installing GNU Autotools Projects
 
 If the software package you want to install uses GNU Autoconf (and possibly
 Automake) or provides a compatible "configure" script, run `swmod ./configure`
@@ -174,7 +175,7 @@ You can also use
 
 for Autoconf/Automake out-of-tree builds (if supported by the project).
 
-#### CMake Projects
+#### Installing CMake Projects
 
 For CMake projects, use `swmod cmake` instead of `cmake`, then run `make` and
 `make install` as usual:
@@ -183,7 +184,16 @@ For CMake projects, use `swmod cmake` instead of `cmake`, then run `make` and
     # swmod cmake path/to/project/dir
     # make && make install && echo OK
 
-#### Projects using other build systems
+#### Installing Python Projects with setup.py
+
+To build and install Python projects based on "setup.py", use
+
+    # swmod setup.py
+
+swmod will run `python setup.py` with the correct `--prefix` option (and
+also create the "site-packages" directory first, if necessary).
+
+#### Installing Projects Using Other Build Systems
 
 If the software package you are installing uses SCons or another build system,
 you have to pass the installation target directory to the build system
