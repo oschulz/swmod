@@ -97,11 +97,11 @@ swmod_check_loaded() {
 		\local libpath_modified="no"
 
 		if \test "${SWMOD_OS}" = "osx" ; then
-			if (\echo "${DYLD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+			if (\echo "${DYLD_LIBRARY_PATH}" | \grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
 				\local libpath_modified="yes"
 			fi
 		else
-			if (\echo "${LD_LIBRARY_PATH}" | grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
+			if (\echo "${LD_LIBRARY_PATH}" | \grep -q -v -F "${DYLD_LIBRARY_PATH}") ; then
 				\local libpath_modified="yes"
 			fi
 		fi
@@ -120,7 +120,7 @@ swmod_is_loaded() {
 
 	\local prefix=`\swmod_normalize_path "${1}"`
 
-	\swmod_normalize_path ":${SWMOD_LOADED_PREFIXES}:" | grep -q -F ":${prefix}:"
+	\swmod_normalize_path ":${SWMOD_LOADED_PREFIXES}:" | \grep -q -F ":${prefix}:"
 }
 
 
