@@ -145,9 +145,18 @@ the necessary compiler and linker options for their dependencies. Where such
 a mechanism is not provided, adding the special dependency `!clflags` can
 help.
 
-Now, configure, build and install your software. Using `swmod ./configure`
-instead of just `.configure` will set the correct install prefix (`configure`
-must support the usual options like `--prefix` for this to work).
+Now build and install the desired software package(s) into the module. swmod
+has direct support for the following build systems:
+
+* GNU Autotools (and compatible "configure" scripts)
+* CMake
+
+#### GNU Autotools Projects
+
+If the software package you want to install uses GNU Autoconf (and possibly
+Automake) or provides a compatible "configure" script, run `swmod ./configure`
+instead of `./configure`. `configure` must support the usual options like
+`--prefix` for this to work. Then run `make` and `make install` as usual:
 
     # swmod ./configure
     # make && make install && echo OK
@@ -155,21 +164,31 @@ must support the usual options like `--prefix` for this to work).
 Afterwards, you should find a directory structure like this (depending on your
 system and the software package(s) you installed):
 
-* `$HOME/.local/sw/mysoftware/linux-ubuntu-12.04-x86_64/1.2.3/bin`
-* `$HOME/.local/sw/mysoftware/linux-ubuntu-12.04-x86_64/1.2.3/lib`
+* `$HOME/.local/sw/mysoftware/linux-ubuntu-14.04-x86_64/1.2.3/bin`
+* `$HOME/.local/sw/mysoftware/linux-ubuntu-14.04-x86_64/1.2.3/lib`
 * ...
 
 You can also use
 
-    # swmod .../SOME_SRC_PATH/configure
+    # swmod path/to/project/dir/configure
 
-for Autoconf/Automake out-of-tree builds.
+for Autoconf/Automake out-of-tree builds (if supported by the project).
 
-Currently, swmod only supports Autoconf out of the box. If the software
-package you are installing uses `scons`, `cmake` or another system, you will
-have to pass the installation target directory to the build system manually.
-`swmod target` exports an environment variable `SWMOD_INST_PREFIX` which you
-can use for this purpose.
+#### CMake Projects
+
+For CMake projects, use `swmod cmake` instead of `cmake`, then run `make` and
+`make install` as usual:
+
+    # cd my/build/dir
+    # swmod cmake path/to/project/dir
+    # make && make install && echo OK
+
+#### Projects using other build systems
+
+If the software package you are installing uses SCons or another build system,
+you have to pass the installation target directory to the build system
+manually. `swmod target` exports an environment variable `SWMOD_INST_PREFIX`
+that may come in handy.
 
 
 ### Module-Specific Init Scripts
