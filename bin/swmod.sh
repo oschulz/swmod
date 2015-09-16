@@ -234,13 +234,60 @@ swmod_require_inst_prefix() {
 }
 
 
+swmod_python_version_opt() {
+	\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'
+}
+
+
 swmod_python_version() {
-	\local python_version=`\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'`
+	\local python_version=`\swmod_python_version_opt`
 	if \test -z "${python_version}" ; then
 		"ERROR: Could not determine python version." 1>&2
 		return 1
-	else
-		echo "${python_version}"
+	fi
+
+	\echo "${python_version}"
+}
+
+
+swmod_python_addprefix() {
+	\local OPTIND=1
+	while getopts f opt
+	do
+		case "$opt" in
+			\f)	\local force="yes" ;;
+		esac
+	done
+	\shift `expr $OPTIND - 1`
+
+	\local prefix=`\swmod_normalize_path "${1}"`
+	if \test -z "${prefix}" ; then
+		"ERROR: swmod_python_addprefix expects non-empty prefix." 1>&f2
+		return 1
+	fi
+
+	\local python_version=`swmod_python_version_opt`
+	if \test -n "${python_version}"; then
+		\local sitepkg_dir
+		for sitepkg_dir in "${prefix}/"{lib,lib64}"/python${python_version}/site-packages"; do
+			if \test -d "${sitepkg_dir}"; then
+				if (
+					\test "$force" = "yes" ||
+					! (\swmod_normalize_path ":${PYTHONPATH}:" | \grep -q -F ":${sitepkg_dir}:")
+				); then
+					# \echo "DEBUG: Adding \"${sitepkg_dir}\" to PYTHONPATH." 1>&2
+					\export PYTHONPATH="${sitepkg_dir}:${PYTHONPATH}"
+				fi
+			fi
+		done
+	fi
+}
+
+
+swmod_python_postinst() {
+	\swmod_require_inst_prefix || return 1
+	if \swmod_is_loaded "${SWMOD_INST_PREFIX}"; then
+		\swmod_python_addprefix "${SWMOD_INST_PREFIX}"
 	fi
 }
 
@@ -357,10 +404,7 @@ swmod_load_single() {
 	## Check for python packages
 
 	if \test "$PYTHONPATH" = "$SWMOD_PREV_PYTHONPATH" ; then
-		\local SWMOD_PYTHON_V=`\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'`
-		if [ -d "${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages" ] ; then
-			\export PYTHONPATH="${LIBDIR}/python${SWMOD_PYTHON_V}/site-packages:${PYTHONPATH}"
-		fi
+		\swmod_python_addprefix -f "${SWMOD_PREFIX}" || return 1
 	else
 		\echo "PYTHONPATH already modified by module init script, skipping." 1>&2
 	fi
@@ -382,6 +426,15 @@ swmod_load_single() {
 	else
 		\export SWMOD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
 	fi
+}
+
+
+swmod_postinst() {
+	\swmod_python_postinst \
+	|| (
+		\echo "ERROR: swmod post install failed." 1>&2
+	) \
+	|| return 1
 }
 
 
@@ -1040,10 +1093,9 @@ cat >&2 <<EOF
 
 Installs the Python project residing in the current directory.
 
-Creates "${SWMOD_INST_PREFIX}/lib/python[VERSION]/site-packages" and adds
-it to PYTHONPATH (if not already part of it). Then runs the setup.py in the
-current directory, automatically passing the right "--prefix" option for
-the current target module.
+Creates "${SWMOD_INST_PREFIX}/lib/python[VERSION]/site-packages" and runs the
+"setup.py" in the current directory, automatically passing the right
+"--prefix" option for the current target module.
 
 EOF
 } # swmod_setup_py_usage()
@@ -1080,16 +1132,13 @@ swmod_setup_py() {
 	\local prefix=`\swmod_normalize_path "${libdir}/python${python_version}/site-packages"`
 
 	if \test ! -d "${python_sitepkg_dir}" ; then
-		echo "Creating directory \"${python_sitepkg_dir}\"."
-		mkdir -p "${python_sitepkg_dir}"
+		\echo "Creating directory \"${python_sitepkg_dir}\"."
+		\mkdir -p "${python_sitepkg_dir}"
 	fi
 
-	if ! (\swmod_normalize_path ":${PYTHONPATH}:" | \grep -q -F ":${python_sitepkg_dir}:") ; then
-		echo "Adding \"${python_sitepkg_dir}\" to PYTHONPATH."
-		\export PYTHONPATH="${python_sitepkg_dir}:${PYTHONPATH}"
-	fi
-
-	\python setup.py install --prefix="$SWMOD_INST_PREFIX"
+	(PYTHONPATH="${python_sitepkg_dir}:${PYTHONPATH}" \
+		\python setup.py install --prefix="$SWMOD_INST_PREFIX") \
+	&& \swmod_python_postinst
 }
 
 
@@ -1117,8 +1166,7 @@ swmod_install() {
 				\echo "Running clean" 1>&2
 				(\make clean || \true) && \swmod_cmake "$@" "${src_dir}"
 			fi) && (
-				\make "-j${NPROCS}" install &&
-				\echo "Installation successful."
+				\make "-j${NPROCS}" install
 			)
 		)
 	elif \test -x "autogen.sh" -o -x "configure" -o -f "configure.in" -o -f "configure.ac"; then
@@ -1146,16 +1194,20 @@ swmod_install() {
 			(\make distclean || \make clean || \true) && \swmod_configure ./configure "$@"
 		fi) && (
 			\make "-j${NPROCS}" &&
-			\make install &&
-			\echo "Installation successful."
+			\make install
 		)
 	elif \test -f "setup.py"; then
-		\swmod_setup_py &&
-		echo "Installation successful."
+		\swmod_setup_py
 	else
 		\echo "ERROR: Can't find (supported) build system current directory." 1>&2
-		return 1
-	fi
+		false
+	fi \
+	&& \swmod_postinst \
+	&& \echo "Installation successful." \
+	|| (
+		\echo "ERROR Installation failed."
+		false
+	) || return 1
 }
 
 
@@ -1188,11 +1240,13 @@ swmod_instpkg() {
 		&& \swmod_install "$@"
 	) && (
 		\rm -rf "${BUILDAREA}"
-		return 0
-	) || (
+		true
+	) \
+	&& \swmod_postinst \
+	|| (
 		\echo "ERROR: Installation failed, build area: \"${BUILDAREA}\"" 1>&2
-		return 1
-	)
+		false
+	) || return 1
 }
 
 
