@@ -1250,6 +1250,29 @@ swmod_instpkg() {
 }
 
 
+# == pip subcommand =============================================
+
+swmod_pip() {
+	\local PIP_CMD="$1"
+	\shift 1
+
+	if \test -z "${PIP_CMD}"; then
+		\echo "Syntax: swmod pip PIP_COMMAND ..."
+		\echo ""
+		\echo "Run Python's pip with appropriate option to use"
+		\echo "SWMOD_INST_PREFIX as prefix. Currently supports only \"pip install\"."
+		return 1
+	fi
+
+	if \test "${PIP_CMD}" = "install"; then
+		PYTHONUSERBASE="${SWMOD_INST_PREFIX}" pip install --user "$@"
+	else
+		\echo "ERROR: Unsupported pip command \"${PIP_CMD}\"" 1>&2
+		false
+	fi
+}
+
+
 # == main =============================================================
 
 # Check if we're running in a bash
@@ -1314,6 +1337,10 @@ COMMANDS
   instpkg             Similar to install, but installs a software package from
                       a given location and performs the build in $TMPDIR.
 
+  pip                 Run Python's pip with appropriate option to use
+                      SWMOD_INST_PREFIX as prefix. Currently supports only
+                      "pip install".
+
   os                  Show current operating system type (same as the
                       OS-specific part of the output of "hostspec").
 
@@ -1377,6 +1404,7 @@ elif \test "${SWMOD_COMMAND}" = "cmake" ; then \swmod_cmake "$@"
 elif \test "${SWMOD_COMMAND}" = "setup.py" ; then \swmod_setup_py "$@"
 elif \test "${SWMOD_COMMAND}" = "install" ; then \swmod_install "$@"
 elif \test "${SWMOD_COMMAND}" = "instpkg" ; then \swmod_instpkg "$@"
+elif \test "${SWMOD_COMMAND}" = "pip" ; then \swmod_pip "$@"
 else
 	\echo -e >&2 "\nError: Unknown command \"${SWMOD_COMMAND}\"."
 	return 1

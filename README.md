@@ -193,6 +193,18 @@ To build and install Python projects based on "setup.py", use
 swmod will run `python setup.py` with the correct `--prefix` option (and
 also create the "site-packages" directory first, if necessary).
 
+
+#### Installing Python Packages from PyPI
+
+To download and install Python packages via `pip`, use
+
+    # swmod pip install ...
+
+This is equivalent to
+
+    PYTHONUSERBASE="${SWMOD_INST_PREFIX}" pip install --user ...
+
+
 #### Installing Projects Using Other Build Systems
 
 If the software package you are installing uses SCons or another build system,
