@@ -235,7 +235,7 @@ swmod_require_inst_prefix() {
 
 
 swmod_python_version_opt() {
-	\python -V 2>&1 | \grep -o '[0-9]\+\.[0-9]\+'
+	\python -V 2>&1 | head -n1 | \sed 's/[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/'
 }
 
 
